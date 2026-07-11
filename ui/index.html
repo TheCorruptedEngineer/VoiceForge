@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VoiceForge</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='13' font-size='13'%3E%F0%9F%94%8A%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #0d1016; --panel: #141924; --panel2: #1a2130; --line: #263041;
+    --text: #d7dee9; --dim: #7d8a9d; --accent: #f0862e; --accent2: #ffb367;
+    --ok: #4cc38a; --err: #e5534b; --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.45 "Segoe UI", system-ui, sans-serif; height: 100vh;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  header {
+    display: flex; align-items: center; gap: 14px; padding: 10px 16px;
+    border-bottom: 1px solid var(--line); background: var(--panel);
+  }
+  .logo { font-weight: 700; font-size: 16px; letter-spacing: .5px; }
+  .logo span { color: var(--accent); }
+  select, input[type=text], input[type=number], textarea {
+    background: var(--panel2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; padding: 6px 8px; font: inherit; outline: none;
+  }
+  select:focus, input:focus, textarea:focus { border-color: var(--accent); }
+  button {
+    background: var(--panel2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 6px; padding: 6px 12px; font: inherit; cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); color: var(--accent2); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #1a1005; font-weight: 600; }
+  button.primary:hover { background: var(--accent2); color: #1a1005; }
+  button.danger:hover { border-color: var(--err); color: var(--err); }
+  button:disabled { opacity: .45; cursor: default; }
+  .pill { font-size: 12px; padding: 3px 10px; border-radius: 20px; border: 1px solid var(--line); color: var(--dim); }
+  .pill.on { border-color: var(--ok); color: var(--ok); }
+  .pill.busy { border-color: var(--accent); color: var(--accent); }
+  main { flex: 1; display: flex; min-height: 0; }
+  #sidebar {
+    width: 300px; border-right: 1px solid var(--line); background: var(--panel);
+    display: flex; flex-direction: column; min-height: 0;
+  }
+  .side-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px 8px; }
+  .side-head h2 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--dim); }
+  #voice-list { overflow-y: auto; flex: 1; padding: 0 10px 10px; }
+  .voice-card {
+    padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius);
+    margin-bottom: 8px; cursor: pointer; background: var(--panel2);
+  }
+  .voice-card:hover { border-color: #3a4a63; }
+  .voice-card.sel { border-color: var(--accent); }
+  .voice-card .vname { font-weight: 600; }
+  .voice-card .vmeta { font-size: 12px; color: var(--dim); margin-top: 2px; }
+  .badge { font-size: 10px; border: 1px solid var(--accent); color: var(--accent); border-radius: 4px; padding: 1px 5px; margin-left: 6px; vertical-align: 1px; }
+  #content { flex: 1; overflow-y: auto; padding: 18px 22px; min-width: 0; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  #text-in { width: 100%; min-height: 130px; resize: vertical; font-size: 15px; padding: 12px; border-radius: var(--radius); }
+  .section { margin-bottom: 20px; }
+  .section h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--dim); margin: 0 0 8px; }
+  .params { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px 20px; }
+  .param label { display: flex; justify-content: space-between; font-size: 12px; color: var(--dim); margin-bottom: 3px; }
+  .param label b { color: var(--text); font-weight: 600; }
+  .param input[type=range] { width: 100%; accent-color: var(--accent); }
+  .param .help { font-size: 11px; color: #5a6579; margin-top: 2px; }
+  .param input[type=text] { width: 100%; }
+  #result { margin-top: 14px; }
+  #result audio, .hist audio { width: 100%; }
+  .hist { border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 8px; background: var(--panel); }
+  .hist .htext { font-size: 13px; margin-bottom: 6px; }
+  .hist .hmeta { font-size: 11px; color: var(--dim); margin-top: 4px; display: flex; gap: 12px; }
+  .hist a { color: var(--accent); text-decoration: none; }
+  /* modal */
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; align-items: center; justify-content: center; z-index: 50; }
+  .modal-bg.show { display: flex; }
+  .modal { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; width: min(680px, 92vw); max-height: 86vh; overflow-y: auto; }
+  .modal h2 { margin: 0 0 14px; font-size: 16px; }
+  .engine-row { border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; margin-bottom: 10px; background: var(--panel2); }
+  .engine-row .blurb { font-size: 12px; color: var(--dim); margin: 4px 0 8px; }
+  pre.log { background: #0a0d12; border: 1px solid var(--line); border-radius: 6px; padding: 8px; font-size: 11px; max-height: 220px; overflow-y: auto; white-space: pre-wrap; }
+  .ref-row { display: flex; align-items: center; gap: 8px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 6px; background: var(--panel2); }
+  .ref-row .rname { flex: 0 0 30%; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ref-row input[type=range] { flex: 1; accent-color: var(--accent); }
+  .ref-row .wval { width: 38px; text-align: right; font-size: 12px; color: var(--accent2); }
+  .field { margin-bottom: 10px; }
+  .field label { display: block; font-size: 12px; color: var(--dim); margin-bottom: 3px; }
+  .field input, .field textarea { width: 100%; }
+  .muted { color: var(--dim); font-size: 12px; }
+  #toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--panel2); border: 1px solid var(--accent); border-radius: 8px; padding: 10px 18px; display: none; z-index: 99; max-width: 70vw; }
+  #toast.err { border-color: var(--err); color: var(--err); }
+  .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--dim); border-top-color: var(--accent); border-radius: 50%; animation: sp 0.8s linear infinite; vertical-align: -2px; }
+  @keyframes sp { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Voice<span>Forge</span></div>
+  <select id="engine-sel" title="Engine"></select>
+  <select id="model-sel" title="Model"></select>
+  <span id="engine-pill" class="pill">idle</span>
+  <div style="flex:1"></div>
+  <button id="btn-engines">Engines</button>
+  <button id="btn-settings">Settings</button>
+</header>
+
+<main>
+  <div id="sidebar">
+    <div class="side-head"><h2>Voices</h2><button id="btn-new-voice">+ New</button></div>
+    <div id="voice-list"></div>
+  </div>
+
+  <div id="content">
+    <div class="section">
+      <div class="row" style="margin-bottom:8px">
+        <h3 style="margin:0">Speak as:</h3>
+        <span id="cur-voice" class="pill on">— none (engine default) —</span>
+        <select id="lang-sel" title="Language"></select>
+      </div>
+      <textarea id="text-in" placeholder="Type what you want spoken…"></textarea>
+      <div class="row" style="margin-top:10px">
+        <button id="btn-generate" class="primary">Generate&nbsp;&nbsp;▶</button>
+        <button id="btn-save-defaults" title="Save current sliders as this voice's defaults">Save as voice defaults</button>
+        <span id="gen-status" class="muted"></span>
+      </div>
+      <div id="result"></div>
+    </div>
+
+    <div class="section">
+      <h3>Generation parameters</h3>
+      <div id="params" class="params"></div>
+    </div>
+
+    <div class="section" id="voice-detail" style="display:none">
+      <h3>Voice: <span id="vd-name" style="color:var(--text)"></span></h3>
+      <div id="vd-refs"></div>
+      <div class="row" style="margin: 8px 0 4px">
+        <input type="file" id="ref-file" accept=".wav,.mp3,.flac,.ogg,.m4a,.opus" multiple style="display:none">
+        <button id="btn-upload-ref">Upload clips</button>
+        <button id="btn-record">● Record mic</button>
+        <button id="btn-save-refs">Save weights</button>
+        <button id="btn-del-voice" class="danger">Delete voice</button>
+      </div>
+      <div class="muted">10–30s of clean speech per clip. Several clips of the <b>same person</b> = steadier clone.
+        Clips of <b>different people</b> + weights = a mixed voice (Chatterbox only).</div>
+    </div>
+
+    <div class="section">
+      <h3>History</h3>
+      <div id="history"></div>
+    </div>
+  </div>
+</main>
+
+<!-- Engines modal -->
+<div class="modal-bg" id="engines-modal">
+  <div class="modal">
+    <h2>Engines</h2>
+    <div id="engines-list"></div>
+    <div class="row" style="justify-content:flex-end"><button onclick="hideModal('engines-modal')">Close</button></div>
+  </div>
+</div>
+
+<!-- Settings modal -->
+<div class="modal-bg" id="settings-modal">
+  <div class="modal">
+    <h2>Settings</h2>
+    <div class="field"><label>Default engine</label><select id="set-engine"></select></div>
+    <div class="field"><label>Default voice (used by API / say.cmd when none given)</label><select id="set-voice"></select></div>
+    <div class="field"><label>Auto-unload engine after idle minutes (0 = never; frees VRAM)</label>
+      <input type="number" id="set-idle" min="0" max="240"></div>
+    <div class="field"><label><input type="checkbox" id="set-exclusive" style="width:auto"> Exclusive GPU (only one engine loaded at a time)</label></div>
+    <div class="row" style="justify-content:flex-end">
+      <button onclick="hideModal('settings-modal')">Cancel</button>
+      <button class="primary" id="btn-save-settings">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- New voice modal -->
+<div class="modal-bg" id="newvoice-modal">
+  <div class="modal" style="width:min(420px,92vw)">
+    <h2>New voice</h2>
+    <div class="field"><label>Name</label><input type="text" id="nv-name" placeholder="e.g. Narrator, My voice, Batman"></div>
+    <div class="field"><label>Language (optional, e.g. en)</label><input type="text" id="nv-lang" placeholder="en"></div>
+    <div class="row" style="justify-content:flex-end">
+      <button onclick="hideModal('newvoice-modal')">Cancel</button>
+      <button class="primary" id="btn-create-voice">Create</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const state = {
+  engines: [], voices: [], config: {}, status: {},
+  engine: null, model: null, voice: null, params: {},
+  recording: null,
+};
+
+async function api(path, opts = {}) {
+  if (opts.json) {
+    opts.method = opts.method || "POST";
+    opts.headers = { "Content-Type": "application/json" };
+    opts.body = JSON.stringify(opts.json);
+  }
+  const r = await fetch(path, opts);
+  if (!r.ok) {
+    let d = ""; try { d = (await r.json()).detail; } catch { d = await r.text(); }
+    throw new Error(d || r.statusText);
+  }
+  const ct = r.headers.get("content-type") || "";
+  return ct.includes("json") ? r.json() : r;
+}
+
+let toastTimer;
+function toast(msg, isErr = false) {
+  const t = $("toast");
+  t.textContent = msg; t.className = isErr ? "err" : ""; t.style.display = "block";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.style.display = "none", isErr ? 8000 : 3000);
+}
+function showModal(id) { $(id).classList.add("show"); }
+function hideModal(id) { $(id).classList.remove("show"); }
+
+// ---------------------------------------------------------------- engines --
+function curEngine() { return state.engines.find(e => e.id === state.engine); }
+
+function renderEngineSel() {
+  $("engine-sel").innerHTML = state.engines.map(e =>
+    `<option value="${e.id}" ${e.id === state.engine ? "selected" : ""}>${e.name}${e.installed ? "" : " (not installed)"}</option>`).join("");
+  const eng = curEngine();
+  $("model-sel").innerHTML = (eng?.models || []).map(m =>
+    `<option value="${m.id}" ${m.id === state.model ? "selected" : ""}>${m.name}</option>`).join("");
+  const langs = eng?.languages || [];
+  $("lang-sel").innerHTML = langs.map(l => `<option value="${l}">${l}</option>`).join("");
+  const vlang = state.voice ? (state.voices.find(v => v.slug === state.voice)?.language || "") : "";
+  if (vlang && langs.includes(vlang)) $("lang-sel").value = vlang;
+}
+
+function setEngine(id, modelId) {
+  state.engine = id;
+  const eng = curEngine();
+  state.model = modelId || (eng?.models.find(m => m.default) || eng?.models[0])?.id;
+  renderEngineSel(); renderParams();
+}
+
+function renderParams() {
+  const eng = curEngine();
+  const voiceMeta = state.voices.find(v => v.slug === state.voice);
+  const saved = (voiceMeta?.params || {})[state.engine] || {};
+  const box = $("params");
+  box.innerHTML = "";
+  (eng?.params || []).forEach(p => {
+    const val = saved[p.key] !== undefined ? saved[p.key] : p.default;
+    state.params[p.key] = val;
+    const div = document.createElement("div");
+    div.className = "param";
+    if (p.type === "text") {
+      div.innerHTML = `<label>${p.label}</label><input type="text" data-k="${p.key}" value="${val || ""}">
+        <div class="help">${p.help || ""}</div>`;
+      div.querySelector("input").oninput = e => state.params[p.key] = e.target.value;
+    } else {
+      div.innerHTML = `<label>${p.label} <b data-v="${p.key}">${val}</b></label>
+        <input type="range" data-k="${p.key}" min="${p.min}" max="${p.max}" step="${p.step}" value="${val}">
+        <div class="help">${p.help || ""}</div>`;
+      div.querySelector("input").oninput = e => {
+        const v = p.type === "int" ? parseInt(e.target.value) : parseFloat(e.target.value);
+        state.params[p.key] = v;
+        div.querySelector(`[data-v="${p.key}"]`).textContent = v;
+      };
+    }
+    box.appendChild(div);
+  });
+}
+
+// ----------------------------------------------------------------- voices --
+function renderVoices() {
+  const eng = curEngine();
+  $("voice-list").innerHTML = state.voices.map(v => {
+    const mixed = v.refs.length > 1 && eng?.supports_mixing;
+    return `<div class="voice-card ${v.slug === state.voice ? "sel" : ""}" data-slug="${v.slug}">
+      <div class="vname">${v.name}${mixed ? '<span class="badge">MIX</span>' : ""}${state.config.default_voice === v.slug ? '<span class="badge" style="border-color:var(--ok);color:var(--ok)">DEFAULT</span>' : ""}</div>
+      <div class="vmeta">${v.refs.length} clip${v.refs.length === 1 ? "" : "s"}${v.language ? " · " + v.language : ""}</div>
+    </div>`;
+  }).join("") || `<div class="muted" style="padding:8px">No voices yet — create one and upload a 10–30s clip.</div>`;
+  document.querySelectorAll(".voice-card").forEach(c =>
+    c.onclick = () => selectVoice(c.dataset.slug === state.voice ? null : c.dataset.slug));
+  $("cur-voice").textContent = state.voice
+    ? state.voices.find(v => v.slug === state.voice)?.name : "— none (engine default) —";
+  renderVoiceDetail();
+}
+
+function selectVoice(slug) {
+  state.voice = slug;
+  renderVoices(); renderParams(); renderEngineSel();
+}
+
+function renderVoiceDetail() {
+  const v = state.voices.find(x => x.slug === state.voice);
+  const box = $("voice-detail");
+  if (!v) { box.style.display = "none"; return; }
+  box.style.display = "";
+  $("vd-name").textContent = v.name;
+  $("vd-refs").innerHTML = v.refs.map((r, i) => `
+    <div class="ref-row" data-i="${i}">
+      <div class="rname" title="${r.file}">${r.file}</div>
+      <audio src="/voicefiles/${v.slug}/refs/${encodeURIComponent(r.file)}" controls preload="none" style="height:28px;flex:0 0 200px"></audio>
+      <input type="range" min="0" max="1" step="0.05" value="${r.weight}" title="mix weight">
+      <span class="wval">${(+r.weight).toFixed(2)}</span>
+      <button class="danger" data-del="${i}" title="remove clip">✕</button>
+    </div>`).join("") || `<div class="muted">No clips yet.</div>`;
+  $("vd-refs").querySelectorAll(".ref-row input[type=range]").forEach(inp => {
+    inp.oninput = e => e.target.parentElement.querySelector(".wval").textContent = (+e.target.value).toFixed(2);
+  });
+  $("vd-refs").querySelectorAll("[data-del]").forEach(b => b.onclick = async () => {
+    const keep = v.refs.filter((_, i) => i !== +b.dataset.del);
+    await api(`/api/voices/${v.slug}`, { method: "PATCH", json: { refs: keep } });
+    await refreshVoices(); toast("clip removed (kept in voices/.trash)");
+  });
+}
+
+async function refreshVoices() {
+  state.voices = await api("/api/voices");
+  renderVoices();
+}
+
+// ------------------------------------------------------------- generation --
+async function generate() {
+  const text = $("text-in").value.trim();
+  if (!text) return toast("type some text first", true);
+  const btn = $("btn-generate");
+  btn.disabled = true;
+  $("gen-status").innerHTML = `<span class="spin"></span> generating… (first use loads the model, can take minutes)`;
+  try {
+    const r = await api("/api/tts", { json: {
+      text, voice: state.voice, engine: state.engine, model: state.model,
+      params: state.params, language: $("lang-sel").value || null,
+    }});
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    $("result").innerHTML = "";
+    const a = document.createElement("audio");
+    a.controls = true; a.src = url; a.autoplay = true;
+    $("result").appendChild(a);
+    $("gen-status").textContent = "";
+    loadHistory();
+  } catch (e) {
+    $("gen-status").textContent = "";
+    toast("generate failed: " + e.message, true);
+  } finally { btn.disabled = false; }
+}
+
+async function loadHistory() {
+  const items = await api("/api/history?limit=25");
+  $("history").innerHTML = items.map(h => `
+    <div class="hist">
+      <div class="htext">${(h.text || "").slice(0, 220)}</div>
+      <audio src="${h.url}" controls preload="none"></audio>
+      <div class="hmeta">
+        <span>${h.created || ""}</span><span>${h.voice || "default"}</span>
+        <span>${h.engine || ""}${h.model ? ":" + h.model : ""}</span>
+        <span>${h.seconds ? h.seconds + "s audio" : ""}${h.gen_time ? " in " + h.gen_time + "s" : ""}</span>
+        <a href="${h.url}" download>download</a>
+      </div>
+    </div>`).join("") || `<div class="muted">Nothing generated yet.</div>`;
+}
+
+// ------------------------------------------------------------- recording --
+function encodeWav(chunks, sampleRate) {
+  let len = 0; chunks.forEach(c => len += c.length);
+  const pcm = new Float32Array(len);
+  let off = 0; chunks.forEach(c => { pcm.set(c, off); off += c.length; });
+  const buf = new ArrayBuffer(44 + pcm.length * 2);
+  const dv = new DataView(buf);
+  const ws = (o, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
+  ws(0, "RIFF"); dv.setUint32(4, 36 + pcm.length * 2, true); ws(8, "WAVE");
+  ws(12, "fmt "); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+  dv.setUint32(24, sampleRate, true); dv.setUint32(28, sampleRate * 2, true);
+  dv.setUint16(32, 2, true); dv.setUint16(34, 16, true);
+  ws(36, "data"); dv.setUint32(40, pcm.length * 2, true);
+  for (let i = 0; i < pcm.length; i++) {
+    const s = Math.max(-1, Math.min(1, pcm[i]));
+    dv.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+  }
+  return new Blob([buf], { type: "audio/wav" });
+}
+
+async function toggleRecord() {
+  const btn = $("btn-record");
+  if (state.recording) {
+    const { ctx, proc, stream, chunks } = state.recording;
+    proc.disconnect(); stream.getTracks().forEach(t => t.stop());
+    const sr = ctx.sampleRate; await ctx.close();
+    state.recording = null;
+    btn.textContent = "● Record mic";
+    const blob = encodeWav(chunks, sr);
+    const fd = new FormData();
+    fd.append("files", blob, `mic-${Date.now()}.wav`);
+    await api(`/api/voices/${state.voice}/refs`, { method: "POST", body: fd });
+    await refreshVoices(); toast("recording added");
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false } });
+    const ctx = new AudioContext();
+    const src = ctx.createMediaStreamSource(stream);
+    const proc = ctx.createScriptProcessor(4096, 1, 1);
+    const chunks = [];
+    proc.onaudioprocess = e => chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+    src.connect(proc); proc.connect(ctx.destination);
+    state.recording = { ctx, proc, stream, chunks };
+    btn.textContent = "■ Stop & save";
+    toast("recording… speak 10–30 seconds, then Stop");
+  } catch (e) { toast("mic access failed: " + e.message, true); }
+}
+
+// ---------------------------------------------------------- engines modal --
+function renderEnginesModal() {
+  $("engines-list").innerHTML = state.engines.map(e => {
+    const st = state.status[e.id] || {};
+    let stateTxt = st.installing ? "installing…" : e.installed ? (st.running ? `loaded: ${st.loaded_model}` : "installed") : "not installed";
+    return `<div class="engine-row" data-id="${e.id}">
+      <div class="row" style="justify-content:space-between">
+        <b>${e.name}</b><span class="pill ${st.running ? "on" : ""}">${stateTxt}</span>
+      </div>
+      <div class="blurb">${e.blurb}</div>
+      <div class="row">
+        ${e.installed ? "" : `<button data-install="${e.id}" class="primary" ${st.installing ? "disabled" : ""}>Install</button>`}
+        ${st.running ? `<button data-unload="${e.id}">Unload (free VRAM)</button>` : ""}
+        <button data-log="${e.id}">Log</button>
+      </div>
+      <pre class="log" id="log-${e.id}" style="display:none"></pre>
+    </div>`;
+  }).join("");
+  $("engines-list").querySelectorAll("[data-install]").forEach(b => b.onclick = () => installEngine(b.dataset.install));
+  $("engines-list").querySelectorAll("[data-unload]").forEach(b => b.onclick = async () => {
+    await api(`/api/engines/${b.dataset.unload}/unload`, { method: "POST" });
+    await refreshStatus(); renderEnginesModal();
+  });
+  $("engines-list").querySelectorAll("[data-log]").forEach(b => b.onclick = async () => {
+    const el = $(`log-${b.dataset.log}`);
+    el.style.display = el.style.display === "none" ? "" : "none";
+    if (el.style.display !== "none") {
+      const r = await api(`/api/engines/${b.dataset.log}/log`);
+      el.textContent = (r.lines || []).join("\n") || "(no worker log)";
+      el.scrollTop = el.scrollHeight;
+    }
+  });
+}
+
+async function installEngine(id) {
+  await api(`/api/engines/${id}/install`, { method: "POST" });
+  const el = $(`log-${id}`); el.style.display = ""; el.textContent = "starting install…\n";
+  let pos = 0;
+  const timer = setInterval(async () => {
+    const r = await api(`/api/engines/${id}/install/log?pos=${pos}`);
+    if (r.lines.length) { el.textContent += r.lines.join("\n") + "\n"; el.scrollTop = el.scrollHeight; pos = r.pos; }
+    if (r.status && r.status !== "running") {
+      clearInterval(timer);
+      toast(r.status === "done" ? `${id} installed` : `${id} install ${r.status}`, r.status !== "done");
+      state.engines = await api("/api/engines");
+      renderEngineSel(); renderEnginesModal();
+    }
+  }, 1500);
+}
+
+// ----------------------------------------------------------------- status --
+async function refreshStatus() {
+  try {
+    const s = await api("/api/status");
+    state.status = s.engines; state.config = s.config;
+    const st = state.status[state.engine] || {};
+    const pill = $("engine-pill");
+    if (st.installing) { pill.className = "pill busy"; pill.textContent = "installing…"; }
+    else if (st.running) { pill.className = "pill on"; pill.textContent = `loaded: ${st.loaded_model}`; }
+    else if (st.installed) { pill.className = "pill"; pill.textContent = "installed, not loaded"; }
+    else { pill.className = "pill"; pill.textContent = "not installed"; }
+  } catch { /* server restarting */ }
+}
+
+// -------------------------------------------------------------- settings --
+function openSettings() {
+  $("set-engine").innerHTML = state.engines.map(e => `<option value="${e.id}" ${state.config.default_engine === e.id ? "selected" : ""}>${e.name}</option>`).join("");
+  $("set-voice").innerHTML = `<option value="">— none —</option>` + state.voices.map(v =>
+    `<option value="${v.slug}" ${state.config.default_voice === v.slug ? "selected" : ""}>${v.name}</option>`).join("");
+  $("set-idle").value = state.config.idle_unload_minutes ?? 15;
+  $("set-exclusive").checked = !!state.config.exclusive_gpu;
+  showModal("settings-modal");
+}
+
+// ------------------------------------------------------------------ init --
+async function init() {
+  state.engines = await api("/api/engines");
+  state.config = await api("/api/config");
+  state.voices = await api("/api/voices");
+  const defEngine = state.config.default_engine && state.engines.some(e => e.id === state.config.default_engine)
+    ? state.config.default_engine : state.engines[0]?.id;
+  setEngine(defEngine, state.config.default_model);
+  if (state.config.default_voice && state.voices.some(v => v.slug === state.config.default_voice))
+    state.voice = state.config.default_voice;
+  renderVoices();
+  loadHistory();
+  refreshStatus();
+  setInterval(refreshStatus, 5000);
+  if (!state.engines.some(e => e.installed)) {
+    toast("No engine installed yet — open Engines and install Chatterbox first.");
+    showModal("engines-modal"); renderEnginesModal();
+  }
+}
+
+$("engine-sel").onchange = e => setEngine(e.target.value);
+$("model-sel").onchange = e => { state.model = e.target.value; };
+$("btn-generate").onclick = generate;
+$("text-in").addEventListener("keydown", e => { if (e.key === "Enter" && e.ctrlKey) generate(); });
+$("btn-engines").onclick = () => { renderEnginesModal(); showModal("engines-modal"); };
+$("btn-settings").onclick = openSettings;
+$("btn-new-voice").onclick = () => { $("nv-name").value = ""; $("nv-lang").value = ""; showModal("newvoice-modal"); };
+$("btn-create-voice").onclick = async () => {
+  try {
+    const v = await api("/api/voices", { json: { name: $("nv-name").value, language: $("nv-lang").value.trim() } });
+    hideModal("newvoice-modal"); await refreshVoices(); selectVoice(v.slug);
+  } catch (e) { toast(e.message, true); }
+};
+$("btn-upload-ref").onclick = () => $("ref-file").click();
+$("ref-file").onchange = async e => {
+  if (!e.target.files.length) return;
+  const fd = new FormData();
+  [...e.target.files].forEach(f => fd.append("files", f));
+  try {
+    await api(`/api/voices/${state.voice}/refs`, { method: "POST", body: fd });
+    await refreshVoices(); toast("clips added");
+  } catch (err) { toast(err.message, true); }
+  e.target.value = "";
+};
+$("btn-record").onclick = toggleRecord;
+$("btn-save-refs").onclick = async () => {
+  const v = state.voices.find(x => x.slug === state.voice);
+  const rows = [...$("vd-refs").querySelectorAll(".ref-row")];
+  const refs = rows.map((row, i) => ({
+    ...v.refs[i], weight: parseFloat(row.querySelector("input[type=range]").value),
+  }));
+  await api(`/api/voices/${v.slug}`, { method: "PATCH", json: { refs } });
+  await refreshVoices(); toast("weights saved");
+};
+$("btn-del-voice").onclick = async () => {
+  if (!confirm("Delete this voice? (it moves to voices/.trash, recoverable)")) return;
+  await api(`/api/voices/${state.voice}`, { method: "DELETE" });
+  state.voice = null; await refreshVoices();
+};
+$("btn-save-defaults").onclick = async () => {
+  if (!state.voice) return toast("select a voice first", true);
+  const v = state.voices.find(x => x.slug === state.voice);
+  const params = { ...(v.params || {}) };
+  params[state.engine] = { ...state.params };
+  await api(`/api/voices/${v.slug}`, { method: "PATCH", json: { params } });
+  await refreshVoices(); toast("saved as voice defaults");
+};
+$("btn-save-settings").onclick = async () => {
+  state.config = await api("/api/config", { method: "PATCH", json: {
+    default_engine: $("set-engine").value,
+    default_voice: $("set-voice").value || null,
+    idle_unload_minutes: parseFloat($("set-idle").value || 0),
+    exclusive_gpu: $("set-exclusive").checked,
+  }});
+  hideModal("settings-modal"); renderVoices(); toast("settings saved");
+};
+document.querySelectorAll(".modal-bg").forEach(m => m.addEventListener("click", e => {
+  if (e.target === m) m.classList.remove("show");
+}));
+
+init();
+</script>
+</body>
+</html>

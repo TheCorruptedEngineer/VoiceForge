@@ -1,0 +1,8 @@
+envs/
+models/
+outputs/
+voices/
+config.json
+__pycache__/
+*.pyc
+engines/*/install.log

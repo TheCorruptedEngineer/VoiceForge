@@ -1,0 +1,23 @@
+{
+  "id": "qwen3tts",
+  "name": "Qwen3-TTS (Alibaba)",
+  "blurb": "Apache-2.0. 3-second rapid cloning, strong emotion control, plus VoiceDesign: describe a voice in plain words and get it.",
+  "python": "3.12",
+  "supports_mixing": false,
+  "needs_ref_transcript": true,
+  "models": [
+    { "id": "base_1_7b", "name": "1.7B Base — best cloning quality", "default": true },
+    { "id": "base_0_6b", "name": "0.6B Base — lightweight, ~3 GB VRAM", "default": false },
+    { "id": "voicedesign_1_7b", "name": "1.7B VoiceDesign — voice from a text description", "default": false }
+  ],
+  "languages": [
+    "Auto", "English", "Chinese", "German", "Italian", "Portuguese",
+    "Spanish", "Japanese", "Korean", "French", "Russian"
+  ],
+  "params": [
+    { "key": "voice_description", "label": "Voice description (VoiceDesign model)", "type": "text", "default": "",
+      "help": "E.g. 'A warm, deep male narrator voice, slow and calm'. Only used by the VoiceDesign model." },
+    { "key": "seed", "label": "Seed (0 = random)", "type": "int", "min": 0, "max": 999999, "step": 1, "default": 0,
+      "help": "Fix a seed to reproduce a take you liked." }
+  ]
+}
