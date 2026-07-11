@@ -99,8 +99,9 @@ def do_tts(msg: dict) -> dict:
     wav = np.asarray(wav, dtype=np.float32)
     sr = 24000  # xtts_v2 output rate
 
-    fx = {k: v for k, v in params.items() if k != "speed"}
-    wav = postfx.apply(wav, sr, fx, log)
+    if msg.get("raw_out"):  # pre-FX take, cached so /api/postfx can re-shape live
+        sf.write(msg["raw_out"], wav, sr)
+    wav = postfx.apply(wav, sr, params, log)
     sf.write(out_path, wav, sr)
     return {"out": out_path, "seconds": round(len(wav) / sr, 2), "model": MODEL_ID,
             "refs_used": len(ref_paths)}

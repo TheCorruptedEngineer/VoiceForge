@@ -346,6 +346,12 @@
       <div id="params" class="params"></div>
     </div>
 
+    <div class="section">
+      <h3>Output shaping <span id="fx-pill" class="pill"><span class="dot"></span><span class="txt">live after first take</span></span></h3>
+      <div id="params-fx" class="params"></div>
+      <div class="muted" style="margin-top:8px">These shape the finished audio — move them while it plays and the take updates in place, no regeneration.</div>
+    </div>
+
     <div class="section" id="voice-detail" style="display:none">
       <h3>Voice · <span id="vd-name" style="color:var(--ink);letter-spacing:.06em"></span></h3>
       <div id="vd-refs"></div>
@@ -415,6 +421,8 @@ const state = {
   engines: [], voices: [], config: {}, status: {},
   engine: null, model: null, voice: null, params: {},
   recording: null, session: {},
+  lastOutput: null,   // output wav name of the last take — target of live shaping
+  renderedSpeed: 1,   // speed baked into the audio currently in the player
 };
 
 /* last-used engine/model/voice/params, restored on reload (session > voice defaults) */
@@ -429,6 +437,7 @@ function saveSession() {
   state.session.model = state.model;
   state.session.voice = state.voice;
   state.session.language = $("lang-sel").value || null;
+  state.session.lastOutput = state.lastOutput;
   state.session.paramsByEngine[state.engine] = { ...state.params };
   localStorage.setItem(LS_KEY, JSON.stringify(state.session));
 }
@@ -495,11 +504,13 @@ function renderParams() {
   const voiceDefaults = (voiceMeta?.params || {})[state.engine] || {};
   const session = state.session.paramsByEngine?.[state.engine] || {};
   const saved = { ...voiceDefaults, ...session };  // last-used wins
-  const box = $("params");
-  box.innerHTML = "";
+  $("params").innerHTML = "";
+  $("params-fx").innerHTML = "";
+  state.params = {};
   (eng?.params || []).forEach(p => {
     const val = saved[p.key] !== undefined ? saved[p.key] : p.default;
     state.params[p.key] = val;
+    const box = p.postfx ? $("params-fx") : $("params");
     const div = document.createElement("div");
     div.className = "param";
     if (p.type === "text") {
@@ -515,10 +526,86 @@ function renderParams() {
         state.params[p.key] = v;
         div.querySelector(`[data-v="${p.key}"]`).textContent = v;
         saveSession();
+        if (p.postfx) fxChanged(p.key);
       };
     }
     box.appendChild(div);
   });
+  renderFxPill();
+}
+
+// ------------------------------------------------------- live output shaping --
+// The postfx-flagged sliders re-shape the LAST take from its cached raw
+// waveform (POST /api/postfx) — CPU-only on the server, no regeneration.
+// Debounced while dragging; the player swaps to the new render at the same
+// spot in the speech. The speed slider additionally gets instant feedback via
+// playbackRate (pitch-preserving in every modern browser) until the true
+// PSOLA render lands.
+let fxTimer = null, fxSeq = 0, fxBusy = false;
+
+function resultAudio() { return $("result").querySelector("audio"); }
+
+function fxParams() {
+  const out = {};
+  (curEngine()?.params || []).forEach(p => { if (p.postfx) out[p.key] = state.params[p.key]; });
+  return out;
+}
+
+function renderFxPill() {
+  const pill = $("fx-pill");
+  if (fxBusy) setPill(pill, "busy", "re-shaping…");
+  else if (state.lastOutput) setPill(pill, "on", "live");
+  else setPill(pill, "", "live after first take");
+}
+
+function fxChanged(key) {
+  if (!state.lastOutput) return;
+  const a = resultAudio();
+  if (key === "speed" && a) {
+    // instant preview while the real render is in flight
+    a.preservesPitch = true;
+    a.playbackRate = (parseFloat(state.params.speed) || 1) / state.renderedSpeed;
+  }
+  clearTimeout(fxTimer);
+  fxTimer = setTimeout(runPostfx, 280);
+}
+
+async function runPostfx() {
+  const seq = ++fxSeq;
+  const fx = fxParams();
+  fxBusy = true; renderFxPill();
+  try {
+    const r = await api("/api/postfx", { json: { file: state.lastOutput, params: fx } });
+    const blob = await r.blob();
+    if (seq !== fxSeq) return;  // a newer slider position superseded this render
+    swapResult(URL.createObjectURL(blob), parseFloat(fx.speed) || 1);
+    loadHistory();  // the output file on disk changed
+  } catch (e) {
+    if (seq !== fxSeq) return;
+    if (/404|regenerate/i.test(e.message)) {
+      state.lastOutput = null; saveSession();
+      toast("no raw take cached for live shaping — generate once", true);
+    } else toast("re-shape failed: " + e.message, true);
+  } finally {
+    if (seq === fxSeq) { fxBusy = false; renderFxPill(); }
+  }
+}
+
+function swapResult(url, newSpeed) {
+  const a = resultAudio();
+  if (!a) return;
+  const wasPlaying = !a.paused && !a.ended;
+  // same instant in the speech: player time × baked speed = content time
+  const contentPos = a.currentTime * state.renderedSpeed;
+  const oldUrl = a.src;
+  a.onloadedmetadata = () => {
+    a.playbackRate = 1;
+    a.currentTime = Math.min(contentPos / newSpeed, Math.max(a.duration - 0.05, 0));
+    if (wasPlaying) a.play();
+    if (oldUrl.startsWith("blob:")) URL.revokeObjectURL(oldUrl);
+  };
+  a.src = url;
+  state.renderedSpeed = newSpeed;
 }
 
 // ----------------------------------------------------------------- voices --
@@ -595,6 +682,10 @@ async function generate() {
     a.controls = true; a.src = url; a.autoplay = true;
     $("result").appendChild(a);
     $("gen-status").textContent = "";
+    state.lastOutput = r.headers.get("X-Output-File");
+    state.renderedSpeed = parseFloat(state.params.speed) || 1;
+    fxSeq++;  // invalidate any in-flight re-shape of the previous take
+    saveSession(); renderFxPill();
     loadHistory();
   } catch (e) {
     $("gen-status").textContent = "";
@@ -773,6 +864,14 @@ async function init() {
     state.voice = s.voice;
   else if (state.config.default_voice && state.voices.some(v => v.slug === state.config.default_voice))
     state.voice = state.config.default_voice;
+  if (s.lastOutput) {  // last take survives a reload — live shaping keeps working
+    state.lastOutput = s.lastOutput;
+    state.renderedSpeed = parseFloat((s.paramsByEngine?.[defEngine] || {}).speed) || 1;
+    const a = document.createElement("audio");
+    a.controls = true; a.src = `/outputs/${encodeURIComponent(s.lastOutput)}`;
+    a.onerror = () => { state.lastOutput = null; $("result").innerHTML = ""; renderFxPill(); };
+    $("result").appendChild(a);
+  }
   renderParams();
   if (s.language && [...$("lang-sel").options].some(o => o.value === s.language))
     $("lang-sel").value = s.language;

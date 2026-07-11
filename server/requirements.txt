@@ -1,3 +1,10 @@
 fastapi>=0.115
 uvicorn>=0.30
 python-multipart>=0.0.9
+# CPU-only DSP for /api/postfx (live output shaping) — deliberately no
+# torch/ML here; heavy stacks stay in the engine venvs
+numpy
+scipy
+soundfile
+praat-parselmouth
+pyloudnorm

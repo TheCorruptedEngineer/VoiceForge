@@ -117,6 +117,23 @@ def do_tts(msg: dict) -> dict:
     if seed > 0:
         torch.manual_seed(seed)
 
+    # sampling knobs are forwarded as **kwargs; retry without them if this
+    # qwen-tts build doesn't take them
+    sample_kw = {}
+    if params.get("temperature") not in (None, "", 0):
+        sample_kw["temperature"] = float(params["temperature"])
+    if params.get("top_p") not in (None, "", 0):
+        sample_kw["top_p"] = float(params["top_p"])
+
+    def gen(fn, **kw):
+        try:
+            return fn(**kw, **sample_kw)
+        except TypeError:
+            if not sample_kw:
+                raise
+            log("this qwen-tts build rejects sampling kwargs; retrying without")
+            return fn(**kw)
+
     if MODEL_ID == "voicedesign_1_7b":
         desc = (params.get("voice_description") or "").strip()
         if not desc:
@@ -125,7 +142,7 @@ def do_tts(msg: dict) -> dict:
         if fn is None:
             raise RuntimeError("this qwen-tts version has no generate_voice_design(); "
                                "use a Base model or update qwen-tts")
-        wavs, sr = fn(text=text, language=language, instruct=desc)
+        wavs, sr = gen(fn, text=text, language=language, instruct=desc)
     else:
         if not refs:
             raise RuntimeError("qwen3tts cloning needs a reference clip — add one to the voice")
@@ -134,13 +151,16 @@ def do_tts(msg: dict) -> dict:
             log("qwen3tts does not support mixing; using highest-weight ref only")
         ref = refs[0]
         ref_path = postfx.preprocess_ref(ref["path"], log)  # trim + normalize (cached)
-        wavs, sr = MODEL.generate_voice_clone(
+        wavs, sr = gen(
+            MODEL.generate_voice_clone,
             text=text,
             language=language,
             ref_audio=ref_path,
             ref_text=ref_transcript(ref_path, ref.get("transcript")),
         )
 
+    if msg.get("raw_out"):  # pre-FX take, cached so /api/postfx can re-shape live
+        sf.write(msg["raw_out"], wavs[0], sr)
     wav = postfx.apply(wavs[0], sr, params, log)
     sf.write(out_path, wav, sr)
     return {"out": out_path, "seconds": round(len(wav) / sr, 2), "model": MODEL_ID}

@@ -11,6 +11,8 @@ Surface:
   Voices        GET/POST /api/voices, GET/PATCH/DELETE /api/voices/{slug}
                 POST /api/voices/{slug}/refs       multipart clips
   Speech        POST /api/tts     {text, voice, engine?, model?, params?, language?} → wav
+                POST /api/postfx  {file, params} → wav  re-shape the cached raw
+                                  take (pitch/speed/…) without regenerating
                 POST /api/speak   same body → plays on the server's speakers (CLI/agents)
                 POST /v1/audio/speech              OpenAI-compatible
   Misc          GET /api/status, GET/PATCH /api/config, GET /api/history
@@ -34,7 +36,15 @@ from engine_manager import EngineError, EngineManager
 
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUTS = ROOT / "outputs"
+RAW_DIR = OUTPUTS / ".raw"  # pre-FX takes; what /api/postfx re-shapes
+RAW_KEEP = 40               # newest raw takes kept (a raw wav is a few MB)
 CONFIG_PATH = ROOT / "config.json"
+
+# The shared postfx module runs here too (CPU-only DSP — parselmouth/scipy,
+# no torch), so output shaping never needs a worker or the GPU.
+import sys as _sys
+_sys.path.insert(0, str(ROOT / "engines" / "_shared"))
+import postfx as _postfx
 
 DEFAULT_CONFIG = {
     "port": 8484,
@@ -238,6 +248,7 @@ def _synthesize(text: str, voice_slug: str | None, engine_id: str | None,
     out_name = time.strftime("%Y%m%d-%H%M%S") + f"-{voice_slug or 'default'}-{uuid.uuid4().hex[:6]}.wav"
     out_path = OUTPUTS / out_name
     OUTPUTS.mkdir(exist_ok=True)
+    RAW_DIR.mkdir(exist_ok=True)
 
     t0 = time.time()
     resp = manager.tts(engine_id, model_id, {
@@ -246,7 +257,9 @@ def _synthesize(text: str, voice_slug: str | None, engine_id: str | None,
         "params": merged,
         "language": language,
         "out": str(out_path),
+        "raw_out": str(RAW_DIR / out_name),
     })
+    _prune_raw()
 
     sidecar = {
         "text": text, "voice": voice_slug, "engine": engine_id,
@@ -276,6 +289,62 @@ def api_tts(body: dict = Body(...)):
                       body.get("model"), body.get("params"), body.get("language"))
     return FileResponse(out, media_type="audio/wav", filename=out.name,
                         headers={"X-Output-File": out.name})
+
+
+# ------------------------------------------------------------ output shaping --
+
+_postfx_lock = threading.Lock()  # serialize rewrites of the same output file
+
+
+def _prune_raw():
+    if not RAW_DIR.exists():
+        return
+    raws = sorted(RAW_DIR.glob("*.wav"), key=lambda p: p.stat().st_mtime, reverse=True)
+    for p in raws[RAW_KEEP:]:
+        try:
+            p.unlink()
+        except OSError:
+            pass
+
+
+@app.post("/api/postfx")
+def api_postfx(body: dict = Body(...)):
+    """Re-apply output shaping (pitch/formant/intonation/speed/clarity/
+    normalize) to a take's cached raw waveform — CPU-only, no worker, no
+    regeneration. Rewrites the output wav + sidecar so history and downloads
+    match what you hear."""
+    name = Path(body.get("file") or "").name  # basename only — no traversal
+    if not name.endswith(".wav"):
+        raise HTTPException(400, "file must be a .wav output name")
+    raw = RAW_DIR / name
+    out = OUTPUTS / name
+    if not raw.exists():
+        raise HTTPException(404, "no raw take cached for this output — regenerate once")
+
+    fx = {k: v for k, v in (body.get("params") or {}).items() if k in _postfx.POSTFX_KEYS}
+
+    import soundfile as sf
+    with _postfx_lock:
+        y, sr = sf.read(raw, dtype="float32")
+        try:
+            y = _postfx.apply(y, sr, fx, lambda m: print(f"[postfx] {m}", flush=True))
+        except Exception as e:
+            raise HTTPException(500, f"postfx failed: {e}")
+        sf.write(out, y, sr)
+
+        side = out.with_suffix(".json")
+        if side.exists():
+            try:
+                meta = json.loads(side.read_text(encoding="utf-8"))
+                meta["params"] = {**(meta.get("params") or {}), **fx}
+                meta["seconds"] = round(len(y) / sr, 2)
+                side.write_text(json.dumps(meta, ensure_ascii=False, indent=2),
+                                encoding="utf-8")
+            except (json.JSONDecodeError, OSError):
+                pass
+
+    return Response(content=out.read_bytes(), media_type="audio/wav",
+                    headers={"X-Output-File": name})
 
 
 _play_lock = threading.Lock()

@@ -183,9 +183,11 @@ def do_tts(msg: dict) -> dict:
     for p in pieces[1:]:
         joined = torch.cat([joined, silence, p])
 
-    y = postfx.apply(joined.numpy(), MODEL.sr, params, log)
-
     import soundfile as sf
+    raw = joined.numpy()
+    if msg.get("raw_out"):  # pre-FX take, cached so /api/postfx can re-shape live
+        sf.write(msg["raw_out"], raw, MODEL.sr)
+    y = postfx.apply(raw, MODEL.sr, params, log)
     sf.write(out_path, y, MODEL.sr)
     return {"out": out_path, "seconds": round(len(y) / MODEL.sr, 2),
             "model": MODEL_ID, "chunks": len(chunks)}

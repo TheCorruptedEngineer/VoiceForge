@@ -1,0 +1,32 @@
+INFO:     Started server process [33748]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8484 (Press CTRL+C to quit)
+INFO:     127.0.0.1:59506 - "GET /api/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59515 - "POST /api/postfx HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59519 - "GET /api/engines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59506 - "GET /api/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61899 - "GET /api/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61911 - "GET /api/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61919 - "GET /api/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61933 - "GET /api/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61944 - "GET /api/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61963 - "GET /api/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52799 - "GET /api/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52806 - "GET /api/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52815 - "GET /api/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52825 - "GET /api/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52831 - "GET /api/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64222 - "GET /api/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64232 - "GET /api/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61916 - "POST /api/tts HTTP/1.1" 200 OK
+[postfx] postfx: PSOLA pitch +5.0 st (median -> 251 Hz), speed x1.30
+[postfx] postfx: loudness -26.0 LUFS -> -18.0 (+8.0 dB)
+INFO:     127.0.0.1:64237 - "POST /api/postfx HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64242 - "GET /api/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64253 - "GET /api/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62830 - "GET /api/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62842 - "GET /api/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63155 - "GET /api/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58667 - "GET /api/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58678 - "GET /api/status HTTP/1.1" 200 OK

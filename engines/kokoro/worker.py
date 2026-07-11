@@ -87,8 +87,9 @@ def do_tts(msg: dict) -> dict:
         raise RuntimeError("kokoro produced no audio (check voice name)")
     wav = np.concatenate(pieces)
 
-    fx = {k: v for k, v in params.items() if k != "speed"}
-    wav = postfx.apply(wav, SR, fx, log)
+    if msg.get("raw_out"):  # pre-FX take, cached so /api/postfx can re-shape live
+        sf.write(msg["raw_out"], wav, SR)
+    wav = postfx.apply(wav, SR, params, log)
     sf.write(out_path, wav, SR)
     return {"out": out_path, "seconds": round(len(wav) / SR, 2),
             "model": MODEL_ID, "voice": voice}
