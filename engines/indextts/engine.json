@@ -1,0 +1,33 @@
+{
+  "id": "indextts",
+  "name": "IndexTTS-2 (Bilibili)",
+  "blurb": "Top-tier zero-shot cloning with emotion control (emotion reference clip, strength, or text-described mood). Heavier and slower than the other engines.",
+  "python": "3.11",
+  "supports_mixing": false,
+  "needs_ref_transcript": false,
+  "badge": { "color": "yellow", "tip": "Heavy: designed for 12+ GB VRAM. On this 8 GB card it runs in fp16 but is slow and may OOM on long text — generate short passages. Also a large git-based install (multi-GB checkpoints)." },
+  "models": [
+    { "id": "indextts2", "name": "IndexTTS-2 — emotional zero-shot cloning", "default": true }
+  ],
+  "languages": ["en", "zh"],
+  "params": [
+    { "key": "emo_alpha", "label": "Emotion strength", "type": "float", "min": 0, "max": 1, "step": 0.05, "default": 1.0,
+      "help": "How strongly the emotion reference/description is applied. 1 = full." },
+    { "key": "emo_text", "label": "Emotion (described in words)", "type": "text", "default": "",
+      "help": "Optional. e.g. 'excited and cheerful', 'tired and sad'. Leave blank to inherit the reference clip's emotion." },
+    { "key": "use_random", "label": "Add variation (0/1)", "type": "int", "min": 0, "max": 1, "step": 1, "default": 0,
+      "help": "1 = more stochastic, varied takes." },
+    { "key": "pitch_semitones", "label": "Pitch (semitones)", "type": "float", "min": -12, "max": 12, "step": 0.5, "default": 0, "postfx": true,
+      "help": "Shift the voice up/down, keeping timbre (TD-PSOLA)." },
+    { "key": "formant_shift", "label": "Formant / character", "type": "float", "min": -4, "max": 4, "step": 0.25, "default": 0, "postfx": true,
+      "help": "Vocal-tract size independent of pitch." },
+    { "key": "pitch_range", "label": "Intonation range", "type": "float", "min": 0, "max": 2.5, "step": 0.05, "default": 1, "postfx": true,
+      "help": "How far pitch swings around its median: 0 = monotone, 1 = as generated, 1.5+ = expressive." },
+    { "key": "speed", "label": "Speed", "type": "float", "min": 0.5, "max": 1.6, "step": 0.05, "default": 1.0, "postfx": true,
+      "help": "Playback tempo without changing pitch (TD-PSOLA)." },
+    { "key": "clarity", "label": "Clarity", "type": "float", "min": 0, "max": 1, "step": 0.05, "default": 0, "postfx": true,
+      "help": "Speech-intelligibility EQ." },
+    { "key": "normalize", "label": "Loudness normalize (0/1)", "type": "int", "min": 0, "max": 1, "step": 1, "default": 1, "postfx": true,
+      "help": "Match every take to -18 LUFS." }
+  ]
+}

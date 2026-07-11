@@ -72,9 +72,22 @@ launcher, CLI, Claude Code skill, gallery integration doc.
   CPML non-commercial weights — DO NOT ship in a paid product).
   New-engine gotchas: native speed param is `native_speed` (postfx `speed`
   skipped in those workers); kokoro langs are pipeline codes (a/b/e/f/…).
-- Still to add later: GPT-SoVITS (1-min fine-tune, needs bespoke repo
-  install + 12 GB training VRAM — the only true minute-scale trainer),
-  Step-Audio-EditX if GPU ever ≥16 GB.
+- Engines added 2026-07-11 (3rd pass): **indextts** (IndexTTS-2, yellow ✱
+  heavy). Git-based install (not on PyPI): requirements uses
+  `indextts @ git+…`, needs torch==2.8.*+cu128 (its pin), and the install
+  pipeline now passes `--index-strategy unsafe-best-match` (torch index +
+  PyPI mix) and runs an optional per-engine `setup.py` post-install hook
+  (downloads checkpoints via huggingface_hub). This setup.py hook +
+  best-match are the reusable seam for any future git-based engine.
+- **Caveat badge system**: engine.json optional `badge:{color,tip}` —
+  blue=non-commercial, yellow=VRAM. UI: ✱ by the selector (hover=tip),
+  option marker, caveat line in Engines modal. XTTS=blue, indextts=yellow.
+- **Step-Audio-EditX: rejected for real** — needs vLLM (no native Windows)
+  and >8 GB even at AWQ-4bit. Do not attempt on this machine.
+- Still to add later: GPT-SoVITS (1-min fine-tune, bespoke repo + 12 GB
+  training VRAM — the only true minute-scale trainer); Fish/OpenAudio
+  S1-mini (blue, fits 4 GB, but CLI-subprocess integration — 3-stage
+  DAC→text2semantic→DAC or their api_server, no clean Python API).
 - **Voice-quality roadmap** (user asked for "make voices better"; shipped so
   far: ref preprocessing + postfx pitch/speed/LUFS in engines/_shared/postfx.py):
   1. **resemble-enhance** post-pass (denoiser+enhancer, MIT, ~2 GB VRAM) as an

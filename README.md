@@ -23,12 +23,19 @@ Nothing ever leaves this machine. Models download once into `models/`.
 | **Qwen3-TTS VoiceDesign** | Describe a voice in words ("deep calm narrator") → get it. | Apache-2.0 | ~5 GB |
 | **F5-TTS v1** | Fast flow-matching cloning (near real-time warm at NFE 16), low hallucination on long text, auto-transcribes refs. | MIT | ~3 GB |
 | **Kokoro-82M** | Faster than real time, excellent built-in voices — the instant engine for say.cmd/notifications. **No cloning.** | Apache-2.0 | <2 GB |
-| **XTTS-v2** | Conditions on **all reference clips at once** — feed it minutes of audio for a steadier clone. 16 languages. | ⚠ CPML weights: **non-commercial** | ~4 GB |
+| **XTTS-v2** ✱ | Conditions on **all reference clips at once** — feed it minutes of audio for a steadier clone. 16 languages. | blue ✱ CPML: **non-commercial** | ~4 GB |
+| **IndexTTS-2** ✱ | Top-tier emotional cloning (emotion by reference clip, strength, or text mood). Git-based install. | yellow ✱ heavy: 12 GB-class | ~8 GB fp16, slow |
 
-Rejected: Step-Audio-EditX (needs 12–16 GB), Fish/OpenAudio S1 (non-commercial
-license), IndexTTS-2 (too slow on 8 GB-class GPUs). GPT-SoVITS (1-minute
-fine-tuning, the real "train on longer audio" option) is roadmapped — it isn't
-pip-installable and training wants 12 GB VRAM.
+**Caveat badges** (shown in the UI, hover for details): **blue ✱** = weights are
+non-commercial (personal/testing/comparison only, can't ship in a paid product);
+**yellow ✱** = heavy, wants more VRAM than this 8 GB card, so slow / short
+passages only. They're included on purpose — for personal testing and A/B'ing.
+
+Not included: **Step-Audio-EditX** — requires vLLM, which has no native Windows
+support, and even AWQ-4bit exceeds 8 GB; it can't run on this machine. **GPT-SoVITS**
+(1-minute fine-tuning — the real "train on longer audio" option) is roadmapped:
+bespoke repo install + 12 GB training VRAM. **Fish/OpenAudio S1-mini** (blue,
+fits 4 GB) is addable but needs CLI-subprocess integration, not a clean Python API.
 
 Each engine lives in its own venv (`envs/<engine>`) and runs as a subprocess —
 conflicting dependencies can't collide, and unloading an engine (or the idle

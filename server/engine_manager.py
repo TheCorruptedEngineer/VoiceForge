@@ -315,12 +315,27 @@ class EngineManager:
                 ["uv", "venv", str(env_dir), "--python", py_version, "--allow-existing"],
                 ["uv", "pip", "install",
                  "-r", str(spec.dir / "requirements.txt"),
+                 # engines mix the PyTorch wheel index with PyPI; without this
+                 # uv takes the first index that has a package (stale torch-side
+                 # tqdm/etc.) and resolution fails. best-match spans both.
+                 "--index-strategy", "unsafe-best-match",
                  "--python", str(_env_python(spec.id))],
             ]
             for args in steps:
                 rc = run(args)
                 if rc != 0:
                     state["status"] = f"failed (exit {rc})"
+                    return
+            # optional per-engine post-install (weight/checkpoint download, repo
+            # checkout, patches) — runs inside the engine's own venv so it has
+            # its deps (huggingface_hub, git, etc.). The modular seam for
+            # git-based engines that aren't a plain pip install.
+            setup = spec.dir / "setup.py"
+            if setup.exists():
+                log.append("running post-install setup.py …")
+                rc = run([str(_env_python(spec.id)), str(setup)])
+                if rc != 0:
+                    state["status"] = f"failed (setup.py exit {rc})"
                     return
             state["status"] = "done"
             log.append(f"engine {spec.id} installed OK")
