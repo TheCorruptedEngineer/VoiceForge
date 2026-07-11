@@ -39,6 +39,12 @@ launcher, CLI, Claude Code skill, gallery integration doc.
 - **Orphaned workers**: killing the server (taskkill /F) leaves worker
   processes alive mid-download/load → added FastAPI lifespan shutdown that
   kills workers; don't /F the server if avoidable.
+- **Phase-vocoder pitch = robotic** (user-reported): librosa pitch_shift
+  smears phase on speech. Replaced with WORLD vocoder (pyworld): F0-only
+  shift preserving the spectral envelope, + independent formant_shift param.
+  librosa kept only as fallback. Verified live in worker log + F0 measure.
+- engine.json is read once at server start (EngineSpec cache) — param/schema
+  edits need a server restart, worker code edits only need engine unload.
 - PyPI torch wheels on Windows are CPU-only — the `+cu124` local version pin
   with `--extra-index-url download.pytorch.org/whl/cu124` is what forces CUDA.
 - Chatterbox `prepare_conditionals` takes `exaggeration=` on 500M models but
