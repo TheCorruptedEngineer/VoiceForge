@@ -228,6 +228,11 @@ def _synthesize(text: str, voice_slug: str | None, engine_id: str | None,
     return out_path
 
 
+@app.post("/api/tts/cancel")
+def api_tts_cancel():
+    return {"cancelled": manager.cancel_current()}
+
+
 @app.post("/api/tts")
 def api_tts(body: dict = Body(...)):
     out = _synthesize(body.get("text", ""), body.get("voice"), body.get("engine"),

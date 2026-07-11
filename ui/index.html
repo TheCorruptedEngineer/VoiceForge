@@ -334,6 +334,7 @@
       <textarea id="text-in" placeholder="Type what you want spoken…"></textarea>
       <div class="row" style="margin-top:12px">
         <button id="btn-generate" class="primary">Generate ▶</button>
+        <button id="btn-cancel" class="danger" style="display:none">Cancel ✕</button>
         <button id="btn-save-defaults" title="Save current sliders as this voice's defaults">Save as voice defaults</button>
         <span id="gen-status"></span>
       </div>
@@ -413,8 +414,24 @@ const $ = id => document.getElementById(id);
 const state = {
   engines: [], voices: [], config: {}, status: {},
   engine: null, model: null, voice: null, params: {},
-  recording: null,
+  recording: null, session: {},
 };
+
+/* last-used engine/model/voice/params, restored on reload (session > voice defaults) */
+const LS_KEY = "voiceforge-session";
+function loadSession() {
+  try { state.session = JSON.parse(localStorage.getItem(LS_KEY)) || {}; }
+  catch { state.session = {}; }
+  state.session.paramsByEngine = state.session.paramsByEngine || {};
+}
+function saveSession() {
+  state.session.engine = state.engine;
+  state.session.model = state.model;
+  state.session.voice = state.voice;
+  state.session.language = $("lang-sel").value || null;
+  state.session.paramsByEngine[state.engine] = { ...state.params };
+  localStorage.setItem(LS_KEY, JSON.stringify(state.session));
+}
 
 /* engraved sort/disclosure chevron (Mythos SortChevron). collapsed → down, expanded → up */
 function chev(dir) {
@@ -475,7 +492,9 @@ function setEngine(id, modelId) {
 function renderParams() {
   const eng = curEngine();
   const voiceMeta = state.voices.find(v => v.slug === state.voice);
-  const saved = (voiceMeta?.params || {})[state.engine] || {};
+  const voiceDefaults = (voiceMeta?.params || {})[state.engine] || {};
+  const session = state.session.paramsByEngine?.[state.engine] || {};
+  const saved = { ...voiceDefaults, ...session };  // last-used wins
   const box = $("params");
   box.innerHTML = "";
   (eng?.params || []).forEach(p => {
@@ -486,7 +505,7 @@ function renderParams() {
     if (p.type === "text") {
       div.innerHTML = `<label>${p.label}</label><input type="text" data-k="${p.key}" value="${val || ""}">
         <div class="help">${p.help || ""}</div>`;
-      div.querySelector("input").oninput = e => state.params[p.key] = e.target.value;
+      div.querySelector("input").oninput = e => { state.params[p.key] = e.target.value; saveSession(); };
     } else {
       div.innerHTML = `<label>${p.label} <b data-v="${p.key}">${val}</b></label>
         <input type="range" data-k="${p.key}" min="${p.min}" max="${p.max}" step="${p.step}" value="${val}">
@@ -495,6 +514,7 @@ function renderParams() {
         const v = p.type === "int" ? parseInt(e.target.value) : parseFloat(e.target.value);
         state.params[p.key] = v;
         div.querySelector(`[data-v="${p.key}"]`).textContent = v;
+        saveSession();
       };
     }
     box.appendChild(div);
@@ -521,6 +541,7 @@ function renderVoices() {
 function selectVoice(slug) {
   state.voice = slug;
   renderVoices(); renderParams(); renderEngineSel();
+  saveSession();
 }
 
 function renderVoiceDetail() {
@@ -556,8 +577,10 @@ async function refreshVoices() {
 async function generate() {
   const text = $("text-in").value.trim();
   if (!text) return toast("type some text first", true);
+  saveSession();
   const btn = $("btn-generate");
   btn.disabled = true;
+  $("btn-cancel").style.display = "";
   $("busybar").classList.add("on");
   $("gen-status").innerHTML = `<span class="spin"></span> generating… (first use loads the model, can take minutes)`;
   try {
@@ -575,8 +598,20 @@ async function generate() {
     loadHistory();
   } catch (e) {
     $("gen-status").textContent = "";
-    toast("generate failed: " + e.message, true);
-  } finally { btn.disabled = false; $("busybar").classList.remove("on"); }
+    if (/cancelled/i.test(e.message)) toast("generation cancelled");
+    else toast("generate failed: " + e.message, true);
+  } finally {
+    btn.disabled = false;
+    $("btn-cancel").style.display = "none";
+    $("busybar").classList.remove("on");
+  }
+}
+
+async function cancelGeneration() {
+  try {
+    const r = await api("/api/tts/cancel", { method: "POST" });
+    if (!r.cancelled) toast("nothing to cancel");
+  } catch (e) { toast("cancel failed: " + e.message, true); }
 }
 
 async function loadHistory() {
@@ -721,14 +756,26 @@ function openSettings() {
 
 // ------------------------------------------------------------------ init --
 async function init() {
+  loadSession();
   state.engines = await api("/api/engines");
   state.config = await api("/api/config");
   state.voices = await api("/api/voices");
-  const defEngine = state.config.default_engine && state.engines.some(e => e.id === state.config.default_engine)
-    ? state.config.default_engine : state.engines[0]?.id;
-  setEngine(defEngine, state.config.default_model);
-  if (state.config.default_voice && state.voices.some(v => v.slug === state.config.default_voice))
+  const s = state.session;
+  const defEngine =
+    (s.engine && state.engines.some(e => e.id === s.engine)) ? s.engine
+    : (state.config.default_engine && state.engines.some(e => e.id === state.config.default_engine))
+      ? state.config.default_engine : state.engines[0]?.id;
+  const eng = state.engines.find(e => e.id === defEngine);
+  const defModel = (s.engine === defEngine && s.model && eng?.models.some(m => m.id === s.model))
+    ? s.model : state.config.default_model;
+  setEngine(defEngine, defModel);
+  if (s.voice !== undefined && (s.voice === null || state.voices.some(v => v.slug === s.voice)))
+    state.voice = s.voice;
+  else if (state.config.default_voice && state.voices.some(v => v.slug === state.config.default_voice))
     state.voice = state.config.default_voice;
+  renderParams();
+  if (s.language && [...$("lang-sel").options].some(o => o.value === s.language))
+    $("lang-sel").value = s.language;
   renderVoices();
   loadHistory();
   refreshStatus();
@@ -739,9 +786,11 @@ async function init() {
   }
 }
 
-$("engine-sel").onchange = e => setEngine(e.target.value);
-$("model-sel").onchange = e => { state.model = e.target.value; };
+$("engine-sel").onchange = e => { setEngine(e.target.value); saveSession(); };
+$("model-sel").onchange = e => { state.model = e.target.value; saveSession(); };
+$("lang-sel").onchange = () => saveSession();
 $("btn-generate").onclick = generate;
+$("btn-cancel").onclick = cancelGeneration;
 $("text-in").addEventListener("keydown", e => { if (e.key === "Enter" && e.ctrlKey) generate(); });
 $("btn-engines").onclick = () => { renderEnginesModal(); showModal("engines-modal"); };
 $("btn-settings").onclick = openSettings;

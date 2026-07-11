@@ -65,6 +65,7 @@ class Worker:
         self.loaded_model: str | None = None
         self.last_used = time.time()
         self.busy = False  # in-flight request — idle watchdog must not kill us
+        self.cancelled = False  # killed on purpose via /api/tts/cancel
         self.log: deque[str] = deque(maxlen=400)
         self._req_lock = threading.Lock()
         self._next_id = 1
@@ -135,12 +136,16 @@ class Worker:
                     resp = self._responses.get(timeout=min(remaining, 5.0))
                 except queue.Empty:
                     if not self.alive:
+                        if self.cancelled:
+                            raise EngineError("generation cancelled")
                         tail = "\n".join(list(self.log)[-15:])
                         raise EngineError(
                             f"{self.spec.id} worker died during {cmd!r}.\nLast log:\n{tail}"
                         )
                     continue
                 if resp is None:
+                    if self.cancelled:
+                        raise EngineError("generation cancelled")
                     tail = "\n".join(list(self.log)[-15:])
                     raise EngineError(
                         f"{self.spec.id} worker exited during {cmd!r}.\nLast log:\n{tail}"
@@ -170,6 +175,7 @@ class EngineManager:
             if (d / "engine.json").exists():
                 self.specs[d.name] = EngineSpec(d)
         self.workers: dict[str, Worker] = {}
+        self.current_worker: Worker | None = None  # set while a tts runs
         self.gen_lock = threading.Lock()   # one GPU → one generation at a time
         self._state_lock = threading.Lock()
         self.installs: dict[str, dict] = {}  # engine_id -> {status, log: deque}
@@ -210,7 +216,25 @@ class EngineManager:
     def tts(self, engine_id: str, model_id: str | None, payload: dict) -> dict:
         with self.gen_lock:
             w = self.ensure(engine_id, model_id)
-            return w.request("tts", TTS_TIMEOUT, **payload)
+            self.current_worker = w
+            try:
+                return w.request("tts", TTS_TIMEOUT, **payload)
+            finally:
+                self.current_worker = None
+
+    def cancel_current(self) -> bool:
+        """Kill the worker that is generating right now (the only reliable way
+        to reclaim the GPU mid-generation). The model reloads on next use."""
+        w = self.current_worker
+        if w is None or not w.busy or not w.alive:
+            return False
+        w.cancelled = True
+        w.kill()
+        with self._state_lock:
+            for eid, ww in list(self.workers.items()):
+                if ww is w:
+                    del self.workers[eid]
+        return True
 
     def unload(self, engine_id: str | None = None):
         with self._state_lock:

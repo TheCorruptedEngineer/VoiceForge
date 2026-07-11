@@ -41,10 +41,13 @@ A voice = `voices/<slug>/` with reference clips + `voice.json`.
 ### Output shaping (every engine)
 
 Post-FX runs on the finished audio inside each worker (`engines/_shared/postfx.py`):
-**Pitch** (±12 semitones), **Speed** (0.5–1.6×, pitch-preserving), **Loudness
-normalize** (-18 LUFS, on by default). Reference clips are also auto-cleaned
-before cloning (silence-trim + peak normalize, cached as `<clip>.prep.wav`) —
-this measurably steadies clones from rough recordings.
+**Pitch** (±12 st, TD-PSOLA — natural, formant-preserving), **Formant /
+character** (±4 st, vocal-tract size independent of pitch), **Speed**
+(0.5–1.6×, pitch-preserving), **Clarity** (0–1 intelligibility EQ: less mud,
+more presence/air), **Loudness normalize** (-18 LUFS, on by default).
+Reference clips are also auto-cleaned before cloning (silence-trim + peak
+normalize, cached as `<clip>.prep.wav`) — steadies clones from rough
+recordings.
 
 Chatterbox needs no transcript. Qwen3-TTS needs the clip's transcript and will
 auto-transcribe once with faster-whisper (cached in a `<clip>.txt` sidecar).

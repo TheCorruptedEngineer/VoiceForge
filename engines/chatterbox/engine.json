@@ -29,6 +29,8 @@
       "help": "Changes apparent vocal-tract size independent of pitch: + = smaller/younger, − = bigger/deeper character." },
     { "key": "speed", "label": "Speed", "type": "float", "min": 0.5, "max": 1.6, "step": 0.05, "default": 1.0,
       "help": "Playback tempo without changing pitch (post-processing)." },
+    { "key": "clarity", "label": "Clarity", "type": "float", "min": 0, "max": 1, "step": 0.05, "default": 0,
+      "help": "Speech-intelligibility EQ: less mud, more presence and air. Subtle at 0.3, radio-voice at 1." },
     { "key": "normalize", "label": "Loudness normalize (0/1)", "type": "int", "min": 0, "max": 1, "step": 1, "default": 1,
       "help": "Match every take to a consistent loudness (-18 LUFS)." }
   ]

@@ -6,4 +6,5 @@ faster-whisper
 soundfile>=0.12
 librosa>=0.10    # postfx: speed + ref preprocessing
 pyloudnorm       # postfx: loudness normalize
-pyworld>=0.3.5   # postfx: formant-preserving pitch shift
+pyworld>=0.3.5          # postfx: pitch-shift fallback #2
+praat-parselmouth>=0.4  # postfx: TD-PSOLA pitch/formant (primary)

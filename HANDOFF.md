@@ -39,10 +39,15 @@ launcher, CLI, Claude Code skill, gallery integration doc.
 - **Orphaned workers**: killing the server (taskkill /F) leaves worker
   processes alive mid-download/load → added FastAPI lifespan shutdown that
   kills workers; don't /F the server if avoidable.
-- **Phase-vocoder pitch = robotic** (user-reported): librosa pitch_shift
-  smears phase on speech. Replaced with WORLD vocoder (pyworld): F0-only
-  shift preserving the spectral envelope, + independent formant_shift param.
-  librosa kept only as fallback. Verified live in worker log + F0 measure.
+- **Pitch-shift algorithm saga** (both user-reported): librosa phase vocoder
+  = robotic (phase smearing). pyworld WORLD = scratchy on neural-TTS audio
+  (D4C aperiodicity misreads synthesized speech) and F0 lands ~0.7 st off.
+  Final: **TD-PSOLA via praat-parselmouth** ("Change gender" call) — time-
+  domain, no resynthesis, F0 dead-on (+4 st → 265.7 vs 265.1 Hz target),
+  handles formant scaling in the same call. Chain: PSOLA → WORLD → librosa.
+- postfx also has `clarity` 0..1 (rumble HPF + RBJ EQ stack: −mud 300 Hz,
+  +presence 3.2 kHz, +air 9 kHz shelf; gains scale with slider). Measured
+  at 0.6: presence band +1.9 dB, mud −1.2 dB.
 - engine.json is read once at server start (EngineSpec cache) — param/schema
   edits need a server restart, worker code edits only need engine unload.
 - PyPI torch wheels on Windows are CPU-only — the `+cu124` local version pin
