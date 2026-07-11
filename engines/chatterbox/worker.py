@@ -17,6 +17,10 @@ import json
 import re
 import sys
 import traceback
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
+import postfx
 
 
 def log(msg):
@@ -67,6 +71,7 @@ def del_model():
 
 
 def prepare_conds(path: str, exaggeration: float):
+    path = postfx.preprocess_ref(path, log)  # trim silence + normalize (cached)
     try:
         MODEL.prepare_conditionals(path, exaggeration=exaggeration)
     except TypeError:  # turbo takes no exaggeration
@@ -178,9 +183,11 @@ def do_tts(msg: dict) -> dict:
     for p in pieces[1:]:
         joined = torch.cat([joined, silence, p])
 
-    import torchaudio
-    torchaudio.save(out_path, joined.unsqueeze(0), MODEL.sr)
-    return {"out": out_path, "seconds": round(joined.shape[-1] / MODEL.sr, 2),
+    y = postfx.apply(joined.numpy(), MODEL.sr, params, log)
+
+    import soundfile as sf
+    sf.write(out_path, y, MODEL.sr)
+    return {"out": out_path, "seconds": round(len(y) / MODEL.sr, 2),
             "model": MODEL_ID, "chunks": len(chunks)}
 
 

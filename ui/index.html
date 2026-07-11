@@ -6,126 +6,336 @@
 <title>VoiceForge</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='13' font-size='13'%3E%F0%9F%94%8A%3C/text%3E%3C/svg%3E">
 <style>
+  /* ---- fonts (self-contained, copied from the Mythos frontend) ---- */
+  @font-face { font-family: 'Space Grotesk'; font-weight: 400; src: url('fonts/space-grotesk-latin-400-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Space Grotesk'; font-weight: 500; src: url('fonts/space-grotesk-latin-500-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Space Grotesk'; font-weight: 700; src: url('fonts/space-grotesk-latin-700-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Inter'; font-weight: 400; src: url('fonts/inter-latin-400-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Inter'; font-weight: 500; src: url('fonts/inter-latin-500-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'JetBrains Mono'; font-weight: 400; src: url('fonts/jetbrains-mono-latin-400-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'JetBrains Mono'; font-weight: 500; src: url('fonts/jetbrains-mono-latin-500-normal.woff2') format('woff2'); }
+
+  /* ---- Mythos design tokens ---- */
   :root {
-    --bg: #0d1016; --panel: #141924; --panel2: #1a2130; --line: #263041;
-    --text: #d7dee9; --dim: #7d8a9d; --accent: #f0862e; --accent2: #ffb367;
-    --ok: #4cc38a; --err: #e5534b; --radius: 10px;
+    --void: #08080b; --panel: #101016; --panel2: #16161e;
+    --line: rgba(255,255,255,0.07); --line-bright: rgba(255,255,255,0.14);
+    --accent: #b13cff; --accent-bright: #cf8aff;
+    --accent-soft: rgba(177,60,255,0.14); --accent-dim: rgba(177,60,255,0.45);
+    --ink: #e8e6f0; --ink-dim: rgba(232,230,240,0.55); --ink-faint: rgba(232,230,240,0.32);
+    --font-display: 'Space Grotesk', system-ui, sans-serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', Consolas, monospace;
+    --err: #ff5d5d; --ok: #4cc38a;
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0; background: var(--bg); color: var(--text);
-    font: 14px/1.45 "Segoe UI", system-ui, sans-serif; height: 100vh;
-    display: flex; flex-direction: column; overflow: hidden;
+    margin: 0; height: 100vh; overflow: hidden;
+    display: flex; flex-direction: column;
+    background-color: var(--void); color: var(--ink);
+    font: 14px/1.5 var(--font-body);
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(177,60,255,0.07), transparent),
+      url('assets/topo-contours.svg');
+    background-size: 100% 100%, 1800px 1400px;
+    background-repeat: no-repeat, repeat;
   }
+  ::selection { background: var(--accent-dim); }
+  * { scrollbar-width: thin; scrollbar-color: rgba(177,60,255,0.35) transparent; }
+  *::-webkit-scrollbar { width: 15px; height: 15px; }
+  *::-webkit-scrollbar-thumb {
+    background: rgba(177,60,255,0.3); border-radius: 0;
+    border: 3.5px solid transparent; background-clip: padding-box;
+  }
+  *::-webkit-scrollbar-thumb:hover { border-width: 0; }
+  *::-webkit-scrollbar-track { background: transparent; }
+
+  .microlabel {
+    font-family: var(--font-mono); font-size: 10px;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-faint);
+  }
+
+  /* ---- chrome ---- */
   header {
-    display: flex; align-items: center; gap: 14px; padding: 10px 16px;
-    border-bottom: 1px solid var(--line); background: var(--panel);
+    display: flex; align-items: center; gap: 16px; padding: 10px 18px;
+    border-bottom: 1px solid var(--line);
+    background: color-mix(in srgb, var(--panel) 78%, transparent);
+    backdrop-filter: blur(14px);
+    position: relative; z-index: 5;
   }
-  .logo { font-weight: 700; font-size: 16px; letter-spacing: .5px; }
-  .logo span { color: var(--accent); }
+  .brand .t {
+    font-family: var(--font-display); font-weight: 700; font-size: 17px;
+    letter-spacing: 0.3em; text-transform: uppercase;
+  }
+  .brand .t em { color: var(--accent); font-style: normal; }
+  .brand .microlabel { margin-top: 2px; }
+
   select, input[type=text], input[type=number], textarea {
-    background: var(--panel2); color: var(--text); border: 1px solid var(--line);
-    border-radius: 6px; padding: 6px 8px; font: inherit; outline: none;
+    background: var(--panel2); color: var(--ink);
+    border: 1px solid var(--line-bright); border-radius: 0;
+    padding: 6px 9px; font: 13px var(--font-body); outline: none;
   }
-  select:focus, input:focus, textarea:focus { border-color: var(--accent); }
+  select { font-family: var(--font-mono); font-size: 12px; }
+  select:focus, input:focus, textarea:focus { border-color: var(--accent-dim); }
+  select option { background: var(--panel2); }
+
   button {
-    background: var(--panel2); color: var(--text); border: 1px solid var(--line);
-    border-radius: 6px; padding: 6px 12px; font: inherit; cursor: pointer;
+    background: rgba(22,22,30,0.8); color: var(--ink-dim);
+    border: 1px solid var(--line-bright); border-radius: 0;
+    padding: 6px 13px; cursor: pointer;
+    font-family: var(--font-mono); font-size: 11px;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    transition: border-color .15s ease, color .15s ease, background .15s ease;
+    clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
   }
-  button:hover { border-color: var(--accent); color: var(--accent2); }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #1a1005; font-weight: 600; }
-  button.primary:hover { background: var(--accent2); color: #1a1005; }
-  button.danger:hover { border-color: var(--err); color: var(--err); }
-  button:disabled { opacity: .45; cursor: default; }
-  .pill { font-size: 12px; padding: 3px 10px; border-radius: 20px; border: 1px solid var(--line); color: var(--dim); }
-  .pill.on { border-color: var(--ok); color: var(--ok); }
-  .pill.busy { border-color: var(--accent); color: var(--accent); }
+  button:hover { border-color: var(--accent); color: var(--accent-bright); background: var(--accent-soft); }
+  button.primary {
+    background: var(--accent); border-color: var(--accent); color: var(--void);
+    font-family: var(--font-display); font-weight: 700; font-size: 13px;
+    letter-spacing: 0.2em; padding: 8px 20px;
+  }
+  button.primary:hover { background: var(--accent-bright); color: var(--void); }
+  button.danger:hover { border-color: var(--err); color: var(--err); background: rgba(255,93,93,0.08); }
+  button:disabled { opacity: .4; cursor: default; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-faint);
+    border: 1px solid var(--line); padding: 4px 10px;
+    clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+    background: var(--panel2);
+  }
+  .pill .dot { width: 6px; height: 6px; background: var(--ink-faint); flex: none; }
+  .pill.on { color: var(--accent-bright); border-color: var(--accent-dim); }
+  .pill.on .dot { background: var(--accent); animation: pulse-dot 1.4s ease-in-out infinite; }
+  .pill.busy { color: var(--accent-bright); border-color: var(--accent-dim); }
+  .pill.busy .dot { background: var(--accent); animation: pulse-dot 0.7s ease-in-out infinite; }
+  @keyframes pulse-dot {
+    0%,100% { opacity: 1; box-shadow: 0 0 6px var(--accent); }
+    50% { opacity: .35; box-shadow: none; }
+  }
+
+  /* caution-tape working bar under the header */
+  #busybar { height: 3px; position: relative; overflow: hidden; background: transparent; flex: none; }
+  #busybar .track {
+    position: absolute; inset: 0 -30px 0 0; display: none;
+    background-image: repeating-linear-gradient(-45deg, var(--accent) 0 8px, #07070b 8px 16px);
+  }
+  #busybar.on .track { display: block; animation: loading-march .7s linear infinite; will-change: transform; }
+  @keyframes loading-march { from { transform: translateX(0); } to { transform: translateX(-22.627417px); } }
+
   main { flex: 1; display: flex; min-height: 0; }
+
+  /* ---- sidebar ---- */
   #sidebar {
-    width: 300px; border-right: 1px solid var(--line); background: var(--panel);
-    display: flex; flex-direction: column; min-height: 0;
+    width: 300px; flex: none; display: flex; flex-direction: column; min-height: 0;
+    border-right: 1px solid var(--line);
+    background: color-mix(in srgb, var(--panel) 86%, transparent);
   }
-  .side-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px 8px; }
-  .side-head h2 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--dim); }
-  #voice-list { overflow-y: auto; flex: 1; padding: 0 10px 10px; }
+  .side-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 14px 10px; }
+  .side-head h2 { margin: 0; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-faint); font-weight: 400; }
+  #voice-list { overflow-y: auto; flex: 1; padding: 0 12px 12px; }
   .voice-card {
-    padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius);
-    margin-bottom: 8px; cursor: pointer; background: var(--panel2);
+    position: relative; padding: 10px 12px; margin-bottom: 8px; cursor: pointer;
+    background: rgba(22,22,30,0.8); border: 1px solid var(--line);
+    clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+    transition: border-color .15s ease, background .15s ease;
   }
-  .voice-card:hover { border-color: #3a4a63; }
-  .voice-card.sel { border-color: var(--accent); }
-  .voice-card .vname { font-weight: 600; }
-  .voice-card .vmeta { font-size: 12px; color: var(--dim); margin-top: 2px; }
-  .badge { font-size: 10px; border: 1px solid var(--accent); color: var(--accent); border-radius: 4px; padding: 1px 5px; margin-left: 6px; vertical-align: 1px; }
-  #content { flex: 1; overflow-y: auto; padding: 18px 22px; min-width: 0; }
+  .voice-card:hover { border-color: var(--line-bright); background: var(--panel2); }
+  .voice-card.sel { border-color: var(--accent-dim); background: linear-gradient(180deg, var(--accent-soft), rgba(22,22,30,0.85)); }
+  .voice-card .vname { font-family: var(--font-display); font-weight: 500; font-size: 14px; letter-spacing: 0.02em; }
+  .voice-card .vmeta { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint); margin-top: 3px; }
+  /* corner brackets on hover / locked on selection */
+  .voice-card::before, .voice-card::after {
+    content: ''; position: absolute; width: 12px; height: 12px;
+    border: 1.5px solid var(--accent); opacity: 0; transition: opacity .15s ease; pointer-events: none;
+  }
+  .voice-card::before { top: 3px; left: 3px; border-right: none; border-bottom: none; }
+  .voice-card::after { bottom: 3px; right: 3px; border-left: none; border-top: none; }
+  .voice-card:hover::before, .voice-card:hover::after, .voice-card.sel::before, .voice-card.sel::after { opacity: 1; }
+  .badge {
+    font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.14em;
+    border: 1px solid var(--accent-dim); color: var(--accent-bright);
+    padding: 1px 5px; margin-left: 7px; vertical-align: 2px; text-transform: uppercase;
+  }
+  .badge.ok { border-color: rgba(76,195,138,0.5); color: var(--ok); }
+
+  /* ---- content ---- */
+  #content { flex: 1; overflow-y: auto; padding: 20px 26px; min-width: 0; }
   .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-  #text-in { width: 100%; min-height: 130px; resize: vertical; font-size: 15px; padding: 12px; border-radius: var(--radius); }
-  .section { margin-bottom: 20px; }
-  .section h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--dim); margin: 0 0 8px; }
-  .params { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px 20px; }
-  .param label { display: flex; justify-content: space-between; font-size: 12px; color: var(--dim); margin-bottom: 3px; }
-  .param label b { color: var(--text); font-weight: 600; }
-  .param input[type=range] { width: 100%; accent-color: var(--accent); }
-  .param .help { font-size: 11px; color: #5a6579; margin-top: 2px; }
+  .section { margin-bottom: 26px; }
+  .section > h3 {
+    font-family: var(--font-mono); font-size: 10px; font-weight: 400;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-faint);
+    margin: 0 0 10px; display: flex; align-items: center; gap: 10px;
+  }
+  .section > h3::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+  #text-in {
+    width: 100%; min-height: 130px; resize: vertical; display: block;
+    font: 15px/1.6 var(--font-body); padding: 13px 15px;
+    background: color-mix(in srgb, var(--panel) 88%, transparent);
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  }
+  .params { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px 26px; }
+  .param label {
+    display: flex; justify-content: space-between; margin-bottom: 6px;
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-dim);
+  }
+  .param label b { color: var(--accent-bright); font-weight: 500; }
+  .param .help { font-size: 11px; color: var(--ink-faint); margin-top: 4px; }
   .param input[type=text] { width: 100%; }
-  #result { margin-top: 14px; }
-  #result audio, .hist audio { width: 100%; }
-  .hist { border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 8px; background: var(--panel); }
-  .hist .htext { font-size: 13px; margin-bottom: 6px; }
-  .hist .hmeta { font-size: 11px; color: var(--dim); margin-top: 4px; display: flex; gap: 12px; }
-  .hist a { color: var(--accent); text-decoration: none; }
-  /* modal */
-  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; align-items: center; justify-content: center; z-index: 50; }
+  /* industrial range slider (Mythos .zoom) */
+  input[type=range] {
+    -webkit-appearance: none; appearance: none; width: 100%;
+    height: 2px; background: var(--line-bright); outline: none; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 8px; height: 16px;
+    background: var(--accent);
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 4px), 50% 100%, 0 calc(100% - 4px));
+    box-shadow: 0 0 8px var(--accent-dim);
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 8px; height: 16px; border: none; border-radius: 0;
+    background: var(--accent); box-shadow: 0 0 8px var(--accent-dim);
+  }
+
+  #result { margin-top: 16px; }
+  audio { width: 100%; height: 36px; filter: hue-rotate(230deg) saturate(0.9) brightness(0.9); }
+  #gen-status { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; color: var(--ink-dim); }
+
+  .hist {
+    position: relative; padding: 12px 14px; margin-bottom: 9px;
+    background: rgba(16,16,22,0.82); border: 1px solid var(--line);
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  }
+  .hist .htext { font-size: 13px; color: var(--ink); margin-bottom: 8px; }
+  .hist .hmeta {
+    display: flex; gap: 16px; margin-top: 7px;
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--ink-faint);
+  }
+  .hist a { color: var(--accent-bright); text-decoration: none; }
+  .hist a:hover { text-shadow: 0 0 8px var(--accent-dim); }
+
+  .muted { color: var(--ink-faint); font-size: 12px; }
+  .field { margin-bottom: 12px; }
+  .field label {
+    display: block; margin-bottom: 5px;
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-dim);
+  }
+  .field input[type=text], .field input[type=number], .field select { width: 100%; }
+
+  /* ---- refs ---- */
+  .ref-row {
+    display: flex; align-items: center; gap: 10px; padding: 8px 10px; margin-bottom: 6px;
+    background: rgba(22,22,30,0.8); border: 1px solid var(--line);
+    clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+  }
+  .ref-row .rname {
+    flex: 0 0 26%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-family: var(--font-mono); font-size: 11px; color: var(--ink-dim);
+  }
+  .ref-row audio { height: 28px; flex: 0 0 200px; }
+  .ref-row input[type=range] { flex: 1; }
+  .ref-row .wval { width: 40px; text-align: right; font-family: var(--font-mono); font-size: 11px; color: var(--accent-bright); }
+  .ref-row button { padding: 3px 8px; }
+
+  /* ---- modals ---- */
+  .modal-bg {
+    position: fixed; inset: 0; z-index: 50; display: none;
+    align-items: center; justify-content: center;
+    background: rgba(4,4,7,0.6); backdrop-filter: blur(3px);
+  }
   .modal-bg.show { display: flex; }
-  .modal { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; width: min(680px, 92vw); max-height: 86vh; overflow-y: auto; }
-  .modal h2 { margin: 0 0 14px; font-size: 16px; }
-  .engine-row { border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; margin-bottom: 10px; background: var(--panel2); }
-  .engine-row .blurb { font-size: 12px; color: var(--dim); margin: 4px 0 8px; }
-  pre.log { background: #0a0d12; border: 1px solid var(--line); border-radius: 6px; padding: 8px; font-size: 11px; max-height: 220px; overflow-y: auto; white-space: pre-wrap; }
-  .ref-row { display: flex; align-items: center; gap: 8px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 6px; background: var(--panel2); }
-  .ref-row .rname { flex: 0 0 30%; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .ref-row input[type=range] { flex: 1; accent-color: var(--accent); }
-  .ref-row .wval { width: 38px; text-align: right; font-size: 12px; color: var(--accent2); }
-  .field { margin-bottom: 10px; }
-  .field label { display: block; font-size: 12px; color: var(--dim); margin-bottom: 3px; }
-  .field input, .field textarea { width: 100%; }
-  .muted { color: var(--dim); font-size: 12px; }
-  #toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--panel2); border: 1px solid var(--accent); border-radius: 8px; padding: 10px 18px; display: none; z-index: 99; max-width: 70vw; }
+  .modal {
+    background: color-mix(in srgb, var(--panel) 92%, transparent);
+    border: 1px solid var(--line-bright); padding: 22px;
+    width: min(680px, 92vw); max-height: 86vh; overflow-y: auto;
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+    animation: modal-in .25s cubic-bezier(0.16,1,0.3,1) both;
+  }
+  @keyframes modal-in {
+    from { opacity: 0; transform: scale(0.96) translateY(10px); }
+    to { opacity: 1; transform: none; }
+  }
+  .modal h2 {
+    margin: 0 0 16px; font-family: var(--font-display); font-weight: 700;
+    font-size: 15px; letter-spacing: 0.22em; text-transform: uppercase;
+  }
+  .engine-row {
+    position: relative; padding: 13px 14px; margin-bottom: 10px;
+    background: rgba(22,22,30,0.8); border: 1px solid var(--line);
+    clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+  }
+  .engine-row b { font-family: var(--font-display); font-weight: 500; letter-spacing: 0.04em; }
+  .engine-row .blurb { font-size: 12px; color: var(--ink-dim); margin: 6px 0 10px; }
+  pre.log {
+    background: var(--void); border: 1px solid var(--line); padding: 9px 11px;
+    font: 10.5px/1.5 var(--font-mono); color: var(--ink-dim);
+    max-height: 220px; overflow-y: auto; white-space: pre-wrap; margin: 10px 0 0;
+  }
+
+  #toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    display: none; z-index: 99; max-width: 70vw; padding: 11px 20px;
+    background: color-mix(in srgb, var(--panel2) 92%, transparent);
+    border: 1px solid var(--accent-dim); color: var(--ink);
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.04em;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+    animation: rise .3s cubic-bezier(0.16,1,0.3,1) both;
+  }
   #toast.err { border-color: var(--err); color: var(--err); }
-  .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--dim); border-top-color: var(--accent); border-radius: 50%; animation: sp 0.8s linear infinite; vertical-align: -2px; }
+  @keyframes rise {
+    from { opacity: 0; transform: translate(-50%, 14px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+  }
+  .spin {
+    display: inline-block; width: 12px; height: 12px; vertical-align: -2px;
+    border: 2px solid var(--line-bright); border-top-color: var(--accent);
+    border-radius: 50%; animation: sp .8s linear infinite;
+  }
   @keyframes sp { to { transform: rotate(360deg); } }
+  .chev { margin-left: 7px; overflow: visible; flex: none; filter: drop-shadow(0 0 3px var(--accent-dim)); }
+  .chev.up { transform: scaleY(-1); }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="logo">Voice<span>Forge</span></div>
+  <div class="brand">
+    <div class="t">VOICE<em>FORGE</em></div>
+    <div class="microlabel">local voice synthesis · sector 8484</div>
+  </div>
   <select id="engine-sel" title="Engine"></select>
   <select id="model-sel" title="Model"></select>
-  <span id="engine-pill" class="pill">idle</span>
+  <span id="engine-pill" class="pill"><span class="dot"></span><span class="txt">idle</span></span>
   <div style="flex:1"></div>
   <button id="btn-engines">Engines</button>
   <button id="btn-settings">Settings</button>
 </header>
+<div id="busybar"><div class="track"></div></div>
 
 <main>
   <div id="sidebar">
-    <div class="side-head"><h2>Voices</h2><button id="btn-new-voice">+ New</button></div>
+    <div class="side-head"><h2>Voice Library</h2><button id="btn-new-voice">+ New</button></div>
     <div id="voice-list"></div>
   </div>
 
   <div id="content">
     <div class="section">
-      <div class="row" style="margin-bottom:8px">
-        <h3 style="margin:0">Speak as:</h3>
-        <span id="cur-voice" class="pill on">— none (engine default) —</span>
+      <div class="row" style="margin-bottom:10px">
+        <h3 style="margin:0">Speak as</h3>
+        <span id="cur-voice" class="pill on"><span class="dot"></span><span class="txt">— none —</span></span>
         <select id="lang-sel" title="Language"></select>
       </div>
       <textarea id="text-in" placeholder="Type what you want spoken…"></textarea>
-      <div class="row" style="margin-top:10px">
-        <button id="btn-generate" class="primary">Generate&nbsp;&nbsp;▶</button>
+      <div class="row" style="margin-top:12px">
+        <button id="btn-generate" class="primary">Generate ▶</button>
         <button id="btn-save-defaults" title="Save current sliders as this voice's defaults">Save as voice defaults</button>
-        <span id="gen-status" class="muted"></span>
+        <span id="gen-status"></span>
       </div>
       <div id="result"></div>
     </div>
@@ -136,9 +346,9 @@
     </div>
 
     <div class="section" id="voice-detail" style="display:none">
-      <h3>Voice: <span id="vd-name" style="color:var(--text)"></span></h3>
+      <h3>Voice · <span id="vd-name" style="color:var(--ink);letter-spacing:.06em"></span></h3>
       <div id="vd-refs"></div>
-      <div class="row" style="margin: 8px 0 4px">
+      <div class="row" style="margin: 10px 0 6px">
         <input type="file" id="ref-file" accept=".wav,.mp3,.flac,.ogg,.m4a,.opus" multiple style="display:none">
         <button id="btn-upload-ref">Upload clips</button>
         <button id="btn-record">● Record mic</button>
@@ -173,7 +383,8 @@
     <div class="field"><label>Default voice (used by API / say.cmd when none given)</label><select id="set-voice"></select></div>
     <div class="field"><label>Auto-unload engine after idle minutes (0 = never; frees VRAM)</label>
       <input type="number" id="set-idle" min="0" max="240"></div>
-    <div class="field"><label><input type="checkbox" id="set-exclusive" style="width:auto"> Exclusive GPU (only one engine loaded at a time)</label></div>
+    <div class="field"><label style="display:flex;align-items:center;gap:8px;text-transform:uppercase">
+      <input type="checkbox" id="set-exclusive" style="width:auto;accent-color:var(--accent)"> Exclusive GPU (one engine loaded at a time)</label></div>
     <div class="row" style="justify-content:flex-end">
       <button onclick="hideModal('settings-modal')">Cancel</button>
       <button class="primary" id="btn-save-settings">Save</button>
@@ -205,6 +416,14 @@ const state = {
   recording: null,
 };
 
+/* engraved sort/disclosure chevron (Mythos SortChevron). collapsed → down, expanded → up */
+function chev(dir) {
+  return `<svg class="chev ${dir === "asc" ? "up" : ""}" viewBox="0 0 28 16" width="11" height="6.3" aria-hidden="true">
+    <path d="M3 3 L14 13 L25 3" fill="none" stroke="var(--accent-dim)" stroke-width="5" stroke-linecap="butt" stroke-linejoin="miter"></path>
+    <path d="M3 3 L14 13 L25 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter"></path>
+  </svg>`;
+}
+
 async function api(path, opts = {}) {
   if (opts.json) {
     opts.method = opts.method || "POST";
@@ -229,6 +448,7 @@ function toast(msg, isErr = false) {
 }
 function showModal(id) { $(id).classList.add("show"); }
 function hideModal(id) { $(id).classList.remove("show"); }
+function setPill(el, cls, txt) { el.className = "pill" + (cls ? " " + cls : ""); el.querySelector(".txt").textContent = txt; }
 
 // ---------------------------------------------------------------- engines --
 function curEngine() { return state.engines.find(e => e.id === state.engine); }
@@ -287,14 +507,14 @@ function renderVoices() {
   $("voice-list").innerHTML = state.voices.map(v => {
     const mixed = v.refs.length > 1 && eng?.supports_mixing;
     return `<div class="voice-card ${v.slug === state.voice ? "sel" : ""}" data-slug="${v.slug}">
-      <div class="vname">${v.name}${mixed ? '<span class="badge">MIX</span>' : ""}${state.config.default_voice === v.slug ? '<span class="badge" style="border-color:var(--ok);color:var(--ok)">DEFAULT</span>' : ""}</div>
+      <div class="vname">${v.name}${mixed ? '<span class="badge">MIX</span>' : ""}${state.config.default_voice === v.slug ? '<span class="badge ok">DEFAULT</span>' : ""}</div>
       <div class="vmeta">${v.refs.length} clip${v.refs.length === 1 ? "" : "s"}${v.language ? " · " + v.language : ""}</div>
     </div>`;
   }).join("") || `<div class="muted" style="padding:8px">No voices yet — create one and upload a 10–30s clip.</div>`;
   document.querySelectorAll(".voice-card").forEach(c =>
     c.onclick = () => selectVoice(c.dataset.slug === state.voice ? null : c.dataset.slug));
-  $("cur-voice").textContent = state.voice
-    ? state.voices.find(v => v.slug === state.voice)?.name : "— none (engine default) —";
+  setPill($("cur-voice"), "on", state.voice
+    ? state.voices.find(v => v.slug === state.voice)?.name : "— none —");
   renderVoiceDetail();
 }
 
@@ -312,7 +532,7 @@ function renderVoiceDetail() {
   $("vd-refs").innerHTML = v.refs.map((r, i) => `
     <div class="ref-row" data-i="${i}">
       <div class="rname" title="${r.file}">${r.file}</div>
-      <audio src="/voicefiles/${v.slug}/refs/${encodeURIComponent(r.file)}" controls preload="none" style="height:28px;flex:0 0 200px"></audio>
+      <audio src="/voicefiles/${v.slug}/refs/${encodeURIComponent(r.file)}" controls preload="none"></audio>
       <input type="range" min="0" max="1" step="0.05" value="${r.weight}" title="mix weight">
       <span class="wval">${(+r.weight).toFixed(2)}</span>
       <button class="danger" data-del="${i}" title="remove clip">✕</button>
@@ -338,6 +558,7 @@ async function generate() {
   if (!text) return toast("type some text first", true);
   const btn = $("btn-generate");
   btn.disabled = true;
+  $("busybar").classList.add("on");
   $("gen-status").innerHTML = `<span class="spin"></span> generating… (first use loads the model, can take minutes)`;
   try {
     const r = await api("/api/tts", { json: {
@@ -355,7 +576,7 @@ async function generate() {
   } catch (e) {
     $("gen-status").textContent = "";
     toast("generate failed: " + e.message, true);
-  } finally { btn.disabled = false; }
+  } finally { btn.disabled = false; $("busybar").classList.remove("on"); }
 }
 
 async function loadHistory() {
@@ -429,13 +650,13 @@ function renderEnginesModal() {
     let stateTxt = st.installing ? "installing…" : e.installed ? (st.running ? `loaded: ${st.loaded_model}` : "installed") : "not installed";
     return `<div class="engine-row" data-id="${e.id}">
       <div class="row" style="justify-content:space-between">
-        <b>${e.name}</b><span class="pill ${st.running ? "on" : ""}">${stateTxt}</span>
+        <b>${e.name}</b><span class="pill ${st.running ? "on" : ""}"><span class="dot"></span><span class="txt">${stateTxt}</span></span>
       </div>
       <div class="blurb">${e.blurb}</div>
       <div class="row">
         ${e.installed ? "" : `<button data-install="${e.id}" class="primary" ${st.installing ? "disabled" : ""}>Install</button>`}
         ${st.running ? `<button data-unload="${e.id}">Unload (free VRAM)</button>` : ""}
-        <button data-log="${e.id}">Log</button>
+        <button data-log="${e.id}" style="display:inline-flex;align-items:center">Log ${chev("desc")}</button>
       </div>
       <pre class="log" id="log-${e.id}" style="display:none"></pre>
     </div>`;
@@ -447,8 +668,10 @@ function renderEnginesModal() {
   });
   $("engines-list").querySelectorAll("[data-log]").forEach(b => b.onclick = async () => {
     const el = $(`log-${b.dataset.log}`);
-    el.style.display = el.style.display === "none" ? "" : "none";
-    if (el.style.display !== "none") {
+    const open = el.style.display === "none";
+    el.style.display = open ? "" : "none";
+    b.innerHTML = `Log ${chev(open ? "asc" : "desc")}`;
+    if (open) {
       const r = await api(`/api/engines/${b.dataset.log}/log`);
       el.textContent = (r.lines || []).join("\n") || "(no worker log)";
       el.scrollTop = el.scrollHeight;
@@ -479,10 +702,10 @@ async function refreshStatus() {
     state.status = s.engines; state.config = s.config;
     const st = state.status[state.engine] || {};
     const pill = $("engine-pill");
-    if (st.installing) { pill.className = "pill busy"; pill.textContent = "installing…"; }
-    else if (st.running) { pill.className = "pill on"; pill.textContent = `loaded: ${st.loaded_model}`; }
-    else if (st.installed) { pill.className = "pill"; pill.textContent = "installed, not loaded"; }
-    else { pill.className = "pill"; pill.textContent = "not installed"; }
+    if (st.installing) setPill(pill, "busy", "installing…");
+    else if (st.running) setPill(pill, "on", `loaded: ${st.loaded_model}`);
+    else if (st.installed) setPill(pill, "", "installed · not loaded");
+    else setPill(pill, "", "not installed");
   } catch { /* server restarting */ }
 }
 

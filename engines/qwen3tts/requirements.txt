@@ -4,3 +4,5 @@ torchaudio==2.7.1+cu126
 qwen-tts
 faster-whisper
 soundfile>=0.12
+librosa>=0.10    # postfx: pitch/speed + ref preprocessing
+pyloudnorm       # postfx: loudness normalize

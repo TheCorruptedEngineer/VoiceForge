@@ -18,6 +18,12 @@
     { "key": "voice_description", "label": "Voice description (VoiceDesign model)", "type": "text", "default": "",
       "help": "E.g. 'A warm, deep male narrator voice, slow and calm'. Only used by the VoiceDesign model." },
     { "key": "seed", "label": "Seed (0 = random)", "type": "int", "min": 0, "max": 999999, "step": 1, "default": 0,
-      "help": "Fix a seed to reproduce a take you liked." }
+      "help": "Fix a seed to reproduce a take you liked." },
+    { "key": "pitch_semitones", "label": "Pitch (semitones)", "type": "float", "min": -12, "max": 12, "step": 0.5, "default": 0,
+      "help": "Shift the finished voice up/down. ±2–3 stays natural; bigger = character voices." },
+    { "key": "speed", "label": "Speed", "type": "float", "min": 0.5, "max": 1.6, "step": 0.05, "default": 1.0,
+      "help": "Playback tempo without changing pitch (post-processing)." },
+    { "key": "normalize", "label": "Loudness normalize (0/1)", "type": "int", "min": 0, "max": 1, "step": 1, "default": 1,
+      "help": "Match every take to a consistent loudness (-18 LUFS)." }
   ]
 }

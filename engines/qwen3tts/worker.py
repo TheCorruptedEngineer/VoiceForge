@@ -15,6 +15,9 @@ import sys
 import traceback
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "_shared"))
+import postfx
+
 
 def log(msg):
     print(f"[qwen3tts] {msg}", file=sys.stderr, flush=True)
@@ -130,14 +133,15 @@ def do_tts(msg: dict) -> dict:
             refs = sorted(refs, key=lambda r: -float(r.get("weight", 1.0)))
             log("qwen3tts does not support mixing; using highest-weight ref only")
         ref = refs[0]
+        ref_path = postfx.preprocess_ref(ref["path"], log)  # trim + normalize (cached)
         wavs, sr = MODEL.generate_voice_clone(
             text=text,
             language=language,
-            ref_audio=ref["path"],
-            ref_text=ref_transcript(ref["path"], ref.get("transcript")),
+            ref_audio=ref_path,
+            ref_text=ref_transcript(ref_path, ref.get("transcript")),
         )
 
-    wav = wavs[0]
+    wav = postfx.apply(wavs[0], sr, params, log)
     sf.write(out_path, wav, sr)
     return {"out": out_path, "seconds": round(len(wav) / sr, 2), "model": MODEL_ID}
 

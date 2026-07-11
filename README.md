@@ -38,6 +38,14 @@ A voice = `voices/<slug>/` with reference clips + `voice.json`.
 - Per-voice default params: tune sliders, then "Save as voice defaults".
 - Deleting anything moves it to `voices/.trash/`, never destroys it.
 
+### Output shaping (every engine)
+
+Post-FX runs on the finished audio inside each worker (`engines/_shared/postfx.py`):
+**Pitch** (±12 semitones), **Speed** (0.5–1.6×, pitch-preserving), **Loudness
+normalize** (-18 LUFS, on by default). Reference clips are also auto-cleaned
+before cloning (silence-trim + peak normalize, cached as `<clip>.prep.wav`) —
+this measurably steadies clones from rough recordings.
+
 Chatterbox needs no transcript. Qwen3-TTS needs the clip's transcript and will
 auto-transcribe once with faster-whisper (cached in a `<clip>.txt` sidecar).
 

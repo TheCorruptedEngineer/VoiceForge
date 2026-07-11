@@ -47,12 +47,28 @@ launcher, CLI, Claude Code skill, gallery integration doc.
   faster-whisper (CPU), cached as `<clip>.txt` sidecar next to the ref.
 
 ### Not yet done / next
-- Qwen3-TTS engine written but **install + live test pending** (Install button
-  in UI → Engines). VoiceDesign method name (`generate_voice_design`) is
-  best-effort — verify against the installed qwen-tts version.
+- qwen-tts API verified by inspection: `generate_voice_clone(text, language,
+  ref_audio, ref_text)` and `generate_voice_design(text, instruct, language)`
+  match the worker exactly. Untapped extras: `x_vector_only_mode=True`
+  (clone WITHOUT transcript), `generate_custom_voice(text, speaker)` preset
+  voices, and sampling kwargs (temperature/top_p) via **kwargs.
+- VoiceDesign model itself untested (separate ~4.5 GB checkpoint, downloads
+  on first select of that model in the UI).
 - Mythos Chat Lab wiring (docs/integration.md has the exact snippets).
 - Possible engines to add later: F5-TTS (speed), Step-Audio-EditX if GPU ever
   ≥16 GB (best-in-class editing).
+- **Voice-quality roadmap** (user asked for "make voices better"; shipped so
+  far: ref preprocessing + postfx pitch/speed/LUFS in engines/_shared/postfx.py):
+  1. **resemble-enhance** post-pass (denoiser+enhancer, MIT, ~2 GB VRAM) as an
+     optional "Enhance" toggle — biggest bang for perceived quality.
+  2. **RVC identity pass**: convert Chatterbox output through an RVC model
+     trained on ~10 min of the target speaker — pushes similarity well above
+     zero-shot. Heavier setup (per-voice training), design as third engine
+     type "fx" so it can chain after any TTS engine.
+  3. **Seed hunting**: generate N takes at different seeds, auto-rank by
+     speaker-embedding cosine to the refs (resemblyzer), return best. Cheap,
+     pure orchestration in the server.
+  4. Better multilingual base: watch for Chatterbox V4 / Qwen3-TTS updates.
 - No streaming yet — whole-clip generation only. Chatterbox has no streaming
   API; Qwen3-TTS does (97 ms) if latency ever matters for the assistant.
 
