@@ -394,11 +394,15 @@ def openai_speech(body: dict = Body(...)):
 # ---------------------------------------------------------------- history --
 
 @app.get("/api/history")
-def api_history(limit: int = 40):
+def api_history(limit: int = 40, offset: int = 0):
+    """Paged history, newest first. Returns {total, items}; limit<=0 means all."""
     items = []
+    total = 0
     if OUTPUTS.exists():
         wavs = sorted(OUTPUTS.glob("*.wav"), key=lambda p: p.stat().st_mtime, reverse=True)
-        for p in wavs[:limit]:
+        total = len(wavs)
+        window = wavs[offset:] if limit <= 0 else wavs[offset:offset + limit]
+        for p in window:
             meta = {}
             side = p.with_suffix(".json")
             if side.exists():
@@ -407,7 +411,7 @@ def api_history(limit: int = 40):
                 except json.JSONDecodeError:
                     pass
             items.append({"file": p.name, "url": f"/outputs/{p.name}", **meta})
-    return items
+    return {"total": total, "items": items}
 
 
 # ----------------------------------------------------------------- static --

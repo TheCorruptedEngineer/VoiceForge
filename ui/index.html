@@ -413,8 +413,9 @@
     </div>
 
     <div class="section">
-      <h3>History</h3>
+      <h3>History <span id="hist-count" class="microlabel" style="margin-left:2px"></span></h3>
       <div id="history"></div>
+      <div id="hist-controls" class="row" style="justify-content:center;margin-top:4px"></div>
     </div>
   </div>
 </main>
@@ -773,7 +774,31 @@ function modelLabel(engineId, modelId) {
 }
 
 async function loadHistory() {
-  const items = await api("/api/history?limit=25");
+  const limit = state.historyLimit === 0 ? 0 : (state.historyLimit || 25);  // 0 = all
+  const r = await api(`/api/history?limit=${limit}`);
+  const items = r.items || [];
+  const total = r.total || items.length;
+
+  $("hist-count").textContent = total ? `${items.length} / ${total}` : "";
+  const ctl = $("hist-controls");
+  ctl.innerHTML = "";
+  if (items.length < total) {
+    const more = document.createElement("button");
+    more.innerHTML = `Show more ${chev("desc")}`;
+    more.style.cssText = "display:inline-flex;align-items:center";
+    more.onclick = () => { state.historyLimit = (state.historyLimit || 25) + 25; loadHistory(); };
+    const all = document.createElement("button");
+    all.textContent = `Show all ${total}`;
+    all.onclick = () => { state.historyLimit = 0; loadHistory(); };  // 0 = all
+    ctl.append(more, all);
+  } else if (total > 25) {
+    const less = document.createElement("button");
+    less.innerHTML = `Collapse ${chev("asc")}`;
+    less.style.cssText = "display:inline-flex;align-items:center";
+    less.onclick = () => { state.historyLimit = 25; loadHistory(); $("history").scrollIntoView({ block: "nearest" }); };
+    ctl.append(less);
+  }
+
   if (!items.length) {
     $("history").innerHTML = `<div class="muted">Nothing generated yet.</div>`;
     return;
