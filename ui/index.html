@@ -393,7 +393,8 @@
     </div>
 
     <div class="section">
-      <h3>Output shaping <span id="fx-pill" class="pill"><span class="dot"></span><span class="txt">live after first take</span></span></h3>
+      <h3>Output shaping <span id="fx-pill" class="pill"><span class="dot"></span><span class="txt">live after first take</span></span>
+        <button id="btn-reset-fx" title="Reset pitch / speed / formant / clarity to defaults for this engine" style="margin-left:auto">Reset shaping</button></h3>
       <div id="params-fx" class="params"></div>
       <div class="muted" style="margin-top:8px">These shape the finished audio — move them while it plays and the take updates in place, no regeneration.</div>
     </div>
@@ -1051,6 +1052,14 @@ $("btn-save-defaults").onclick = async () => {
   params[state.engine] = { ...state.params };
   await api(`/api/voices/${v.slug}`, { method: "PATCH", json: { params } });
   await refreshVoices(); toast("saved as voice defaults");
+};
+$("btn-reset-fx").onclick = () => {
+  const eng = curEngine();
+  (eng?.params || []).forEach(p => { if (p.postfx) state.params[p.key] = p.default; });
+  saveSession();       // persist defaults so renderParams (which reads session) keeps them
+  renderParams();
+  if (state.lastOutput) runPostfx();  // snap the current take back to clean
+  toast("output shaping reset to defaults");
 };
 $("btn-save-settings").onclick = async () => {
   state.config = await api("/api/config", { method: "PATCH", json: {
