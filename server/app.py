@@ -22,6 +22,7 @@ import json
 import threading
 import time
 import uuid
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Body, FastAPI, HTTPException, Request, UploadFile
@@ -65,7 +66,14 @@ def save_config(cfg: dict):
 CONFIG = load_config()
 manager = EngineManager(lambda: CONFIG)
 
-app = FastAPI(title="VoiceForge", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    yield
+    manager.unload()  # kill workers on shutdown — orphans would hog VRAM
+
+
+app = FastAPI(title="VoiceForge", version="0.1.0", lifespan=lifespan)
 
 
 @app.exception_handler(EngineError)

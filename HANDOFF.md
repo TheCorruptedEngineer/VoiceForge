@@ -5,9 +5,13 @@
 Built end-to-end in one session: server, UI, Chatterbox + Qwen3-TTS engines,
 launcher, CLI, Claude Code skill, gallery integration doc.
 
-### Verified live
-- server env (py 3.12) + chatterbox env (py 3.11, torch 2.6.0+cu124, CUDA OK)
-- *(see session log below for what was tested at the end of the session)*
+### Verified live (2026-07-11, RTX 3060 Ti)
+- Chatterbox multilingual_v3: default voice, single-ref clone, **2-ref mix**
+  (log: "blended 2 refs"), long-text chunking (467 chars → 23.8s audio),
+  warm generation ≈ real-time (5s gen for 6s audio)
+- Chatterbox turbo: works incl. `<laugh>` tag (quieter output, rms 0.05)
+- OpenAI endpoint, say.cmd, /api/speak (audible), headless UI check PASSED
+- Engine install pipeline (qwen3tts installed via POST /api/engines/../install)
 
 ### Architecture decisions (why)
 - **Worker subprocesses, one venv per engine** — chatterbox pins
@@ -21,7 +25,20 @@ launcher, CLI, Claude Code skill, gallery integration doc.
 - **HF_HOME = ./models** — fully self-contained project, easy to relocate.
 - Port **8484** (gallery backend is 8474).
 
-### Gotchas burned
+### Gotchas burned (post-review fixes, all committed)
+- **setuptools<81 required** in chatterbox env: resemble-perth imports
+  pkg_resources (absent in uv venvs, deleted in setuptools>=82) and perth
+  swallows the ImportError → cryptic "'NoneType' object is not callable"
+  at model load. Fixed in requirements; a stale worker must be unloaded
+  after the fix (it cached perth=None).
+- **PS 5.1 advanced-function trap** (say.ps1): one [Parameter()] attribute
+  makes ALL params positional-by-declaration-order → quoted text bound to
+  -Voice. Fixed with explicit Position=0 on $Text.
+- **Idle watchdog vs long jobs**: last_used only updates on response, so a
+  >15-min generation would be killed mid-flight → added Worker.busy guard.
+- **Orphaned workers**: killing the server (taskkill /F) leaves worker
+  processes alive mid-download/load → added FastAPI lifespan shutdown that
+  kills workers; don't /F the server if avoidable.
 - PyPI torch wheels on Windows are CPU-only — the `+cu124` local version pin
   with `--extra-index-url download.pytorch.org/whl/cu124` is what forces CUDA.
 - Chatterbox `prepare_conditionals` takes `exaggeration=` on 500M models but

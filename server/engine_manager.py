@@ -64,6 +64,7 @@ class Worker:
         self.spec = spec
         self.loaded_model: str | None = None
         self.last_used = time.time()
+        self.busy = False  # in-flight request — idle watchdog must not kill us
         self.log: deque[str] = deque(maxlen=400)
         self._req_lock = threading.Lock()
         self._next_id = 1
@@ -114,6 +115,7 @@ class Worker:
         with self._req_lock:
             if not self.alive:
                 raise EngineError(f"{self.spec.id} worker is not running")
+            self.busy = True
             rid = self._next_id
             self._next_id += 1
             msg = {"id": rid, "cmd": cmd, **kw}
@@ -146,6 +148,7 @@ class Worker:
                 if resp.get("id") != rid:
                     continue  # stale response from a timed-out request
                 self.last_used = time.time()
+                self.busy = False
                 if not resp.get("ok"):
                     raise EngineError(resp.get("error", "unknown worker error"))
                 return resp
@@ -248,7 +251,7 @@ class EngineManager:
             cutoff = time.time() - mins * 60
             with self._state_lock:
                 for eid, w in list(self.workers.items()):
-                    if w.alive and w.last_used < cutoff:
+                    if w.alive and not w.busy and w.last_used < cutoff:
                         w.kill()
                         del self.workers[eid]
 
