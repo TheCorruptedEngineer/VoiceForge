@@ -14,11 +14,12 @@ def main():
 
     CKPT.mkdir(exist_ok=True)
     print(f"downloading IndexTeam/IndexTTS-2 checkpoints -> {CKPT} (multi-GB, one time)")
+    # Grab the whole repo except docs/git metadata — the model ships .pt stat
+    # files (feat1/feat2/wav2vec2bert_stats) that a narrow allow-list misses.
     snapshot_download(
         repo_id="IndexTeam/IndexTTS-2",
         local_dir=str(CKPT),
-        allow_patterns=["*.yaml", "*.json", "*.pth", "*.safetensors", "*.model",
-                        "*.bpe", "*.vocab", "*.txt", "*.bin"],
+        ignore_patterns=["*.md", ".gitattributes"],
     )
     cfg = CKPT / "config.yaml"
     if not cfg.exists():
