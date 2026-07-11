@@ -1,0 +1,26 @@
+{
+  "id": "kokoro",
+  "name": "Kokoro-82M (instant)",
+  "blurb": "Apache-2.0, 82M params — faster than real time, excellent built-in voices. NO cloning: this is the instant engine for notifications, say.cmd and quick reads.",
+  "python": "3.12",
+  "supports_mixing": false,
+  "needs_ref_transcript": false,
+  "models": [
+    { "id": "v1_0", "name": "Kokoro v1.0 — 54 voices, 8 languages", "default": true }
+  ],
+  "languages": ["a", "b", "e", "f", "h", "i", "j", "p", "z"],
+  "params": [
+    { "key": "kokoro_voice", "label": "Built-in voice", "type": "text", "default": "af_heart",
+      "help": "e.g. af_heart, af_bella, af_nicole, am_michael, am_fenrir, bf_emma, bm_george. Full list: hf.co/hexgrad/Kokoro-82M/tree/main/voices" },
+    { "key": "native_speed", "label": "Speaking rate", "type": "float", "min": 0.5, "max": 1.5, "step": 0.05, "default": 1.0,
+      "help": "Kokoro's own rate control." },
+    { "key": "pitch_semitones", "label": "Pitch (semitones)", "type": "float", "min": -12, "max": 12, "step": 0.5, "default": 0,
+      "help": "Shift the voice up/down, keeping timbre (TD-PSOLA)." },
+    { "key": "formant_shift", "label": "Formant / character", "type": "float", "min": -4, "max": 4, "step": 0.25, "default": 0,
+      "help": "Vocal-tract size independent of pitch." },
+    { "key": "clarity", "label": "Clarity", "type": "float", "min": 0, "max": 1, "step": 0.05, "default": 0,
+      "help": "Speech-intelligibility EQ." },
+    { "key": "normalize", "label": "Loudness normalize (0/1)", "type": "int", "min": 0, "max": 1, "step": 1, "default": 1,
+      "help": "Match every take to -18 LUFS." }
+  ]
+}

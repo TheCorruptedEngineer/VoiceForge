@@ -66,8 +66,15 @@ launcher, CLI, Claude Code skill, gallery integration doc.
 - VoiceDesign model itself untested (separate ~4.5 GB checkpoint, downloads
   on first select of that model in the UI).
 - Mythos Chat Lab wiring (docs/integration.md has the exact snippets).
-- Possible engines to add later: F5-TTS (speed), Step-Audio-EditX if GPU ever
-  ≥16 GB (best-in-class editing).
+- Engines added 2026-07-11 (2nd pass): **f5tts** (fast cloning, MIT, auto-
+  transcribing refs), **kokoro** (82M instant, no cloning, say.cmd engine),
+  **xtts** (multi-clip conditioning = the "longer audio" answer for now;
+  CPML non-commercial weights — DO NOT ship in a paid product).
+  New-engine gotchas: native speed param is `native_speed` (postfx `speed`
+  skipped in those workers); kokoro langs are pipeline codes (a/b/e/f/…).
+- Still to add later: GPT-SoVITS (1-min fine-tune, needs bespoke repo
+  install + 12 GB training VRAM — the only true minute-scale trainer),
+  Step-Audio-EditX if GPU ever ≥16 GB.
 - **Voice-quality roadmap** (user asked for "make voices better"; shipped so
   far: ref preprocessing + postfx pitch/speed/LUFS in engines/_shared/postfx.py):
   1. **resemble-enhance** post-pass (denoiser+enhancer, MIT, ~2 GB VRAM) as an

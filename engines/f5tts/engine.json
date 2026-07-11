@@ -1,0 +1,30 @@
+{
+  "id": "f5tts",
+  "name": "F5-TTS (SWivid)",
+  "blurb": "MIT flow-matching model: fast (near real-time warm on a 3060 Ti at low NFE), low hallucination on long text, clones from 5–15s. Auto-transcribes the reference.",
+  "python": "3.11",
+  "supports_mixing": false,
+  "needs_ref_transcript": false,
+  "models": [
+    { "id": "v1_base", "name": "F5-TTS v1 Base — best quality/speed balance", "default": true }
+  ],
+  "languages": ["en", "zh"],
+  "params": [
+    { "key": "nfe_step", "label": "Quality steps (NFE)", "type": "int", "min": 8, "max": 64, "step": 2, "default": 32,
+      "help": "ODE solver steps. 16 ≈ 2× faster and still good; 32 = reference quality." },
+    { "key": "cfg_strength", "label": "Guidance (CFG)", "type": "float", "min": 0.5, "max": 4, "step": 0.1, "default": 2.0,
+      "help": "How hard it follows text + reference. 2.0 default." },
+    { "key": "native_speed", "label": "Speaking rate", "type": "float", "min": 0.5, "max": 1.5, "step": 0.05, "default": 1.0,
+      "help": "F5's own rate control (better than post-stretch)." },
+    { "key": "seed", "label": "Seed (0 = random)", "type": "int", "min": 0, "max": 999999, "step": 1, "default": 0,
+      "help": "Fix a seed to reproduce a take you liked." },
+    { "key": "pitch_semitones", "label": "Pitch (semitones)", "type": "float", "min": -12, "max": 12, "step": 0.5, "default": 0,
+      "help": "Shift the voice up/down, keeping the speaker's timbre (TD-PSOLA)." },
+    { "key": "formant_shift", "label": "Formant / character", "type": "float", "min": -4, "max": 4, "step": 0.25, "default": 0,
+      "help": "Vocal-tract size independent of pitch: + = younger, − = deeper." },
+    { "key": "clarity", "label": "Clarity", "type": "float", "min": 0, "max": 1, "step": 0.05, "default": 0,
+      "help": "Speech-intelligibility EQ: less mud, more presence and air." },
+    { "key": "normalize", "label": "Loudness normalize (0/1)", "type": "int", "min": 0, "max": 1, "step": 1, "default": 1,
+      "help": "Match every take to a consistent loudness (-18 LUFS)." }
+  ]
+}

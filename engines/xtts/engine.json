@@ -1,0 +1,31 @@
+{
+  "id": "xtts",
+  "name": "XTTS-v2 (Coqui) — multi-clip clone",
+  "blurb": "Conditions on ALL your reference clips at once (the more/longer audio, the steadier the clone), 16 languages. ⚠ Weights are CPML: personal/research use only, NOT for a commercial product.",
+  "python": "3.11",
+  "supports_mixing": false,
+  "needs_ref_transcript": false,
+  "models": [
+    { "id": "xtts_v2", "name": "XTTS-v2 — multilingual multi-reference", "default": true }
+  ],
+  "languages": [
+    "en", "es", "fr", "de", "it", "pt", "pl", "tr", "ru", "nl", "cs", "ar",
+    "zh-cn", "ja", "hu", "ko", "hi"
+  ],
+  "params": [
+    { "key": "temperature", "label": "Temperature", "type": "float", "min": 0.1, "max": 1.5, "step": 0.05, "default": 0.65,
+      "help": "Sampling randomness. Lower = consistent, higher = varied takes." },
+    { "key": "repetition_penalty", "label": "Repetition penalty", "type": "float", "min": 1.0, "max": 10.0, "step": 0.5, "default": 2.0,
+      "help": "Raise if it stutters or loops sounds." },
+    { "key": "native_speed", "label": "Speaking rate", "type": "float", "min": 0.5, "max": 1.5, "step": 0.05, "default": 1.0,
+      "help": "XTTS's own rate control." },
+    { "key": "pitch_semitones", "label": "Pitch (semitones)", "type": "float", "min": -12, "max": 12, "step": 0.5, "default": 0,
+      "help": "Shift the voice up/down, keeping timbre (TD-PSOLA)." },
+    { "key": "formant_shift", "label": "Formant / character", "type": "float", "min": -4, "max": 4, "step": 0.25, "default": 0,
+      "help": "Vocal-tract size independent of pitch." },
+    { "key": "clarity", "label": "Clarity", "type": "float", "min": 0, "max": 1, "step": 0.05, "default": 0,
+      "help": "Speech-intelligibility EQ." },
+    { "key": "normalize", "label": "Loudness normalize (0/1)", "type": "int", "min": 0, "max": 1, "step": 1, "default": 1,
+      "help": "Match every take to -18 LUFS." }
+  ]
+}

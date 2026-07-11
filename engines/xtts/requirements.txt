@@ -1,0 +1,10 @@
+--extra-index-url https://download.pytorch.org/whl/cu124
+torch==2.6.0+cu124
+torchaudio==2.6.0+cu124
+coqui-tts
+transformers>=4.43,<5   # coqui imports isin_mps_friendly, removed in transformers 5
+soundfile>=0.12
+librosa>=0.10
+pyloudnorm
+pyworld>=0.3.5
+praat-parselmouth>=0.4
