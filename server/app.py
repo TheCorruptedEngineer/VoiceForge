@@ -43,6 +43,10 @@ DEFAULT_CONFIG = {
     "default_engine": "chatterbox",
     "default_model": None,
     "default_voice": None,
+    # written by the server after every successful generation; requests that
+    # omit voice/engine/model/params inherit it ("the default is whatever I
+    # last used"). Settings-page defaults are the fallback beneath it.
+    "last_used": None,
 }
 
 _config_lock = threading.Lock()
@@ -132,6 +136,10 @@ def api_patch_config(patch: dict = Body(...)):
     for k, v in patch.items():
         if k in DEFAULT_CONFIG:
             CONFIG[k] = v
+    # explicitly chosen Settings defaults must take effect now, not stay
+    # shadowed behind the last-used snapshot
+    if ("default_voice" in patch or "default_engine" in patch) and CONFIG.get("last_used"):
+        CONFIG["last_used"] = None
     save_config(CONFIG)
     return CONFIG
 
@@ -182,6 +190,16 @@ async def api_add_refs(slug: str, files: list[UploadFile]):
 
 # ----------------------------------------------------------------- speech --
 
+def _voice_exists(slug: str | None) -> bool:
+    if not slug:
+        return False
+    try:
+        V.get_voice(slug)
+        return True
+    except V.VoiceError:
+        return False
+
+
 def _synthesize(text: str, voice_slug: str | None, engine_id: str | None,
                 model_id: str | None, params: dict | None,
                 language: str | None) -> Path:
@@ -189,12 +207,25 @@ def _synthesize(text: str, voice_slug: str | None, engine_id: str | None,
     if not text:
         raise HTTPException(400, "text is empty")
 
-    engine_id = engine_id or CONFIG.get("default_engine") or "chatterbox"
+    last = CONFIG.get("last_used") or {}
+
+    engine_id = (engine_id or last.get("engine")
+                 or CONFIG.get("default_engine") or "chatterbox")
     if engine_id not in manager.specs:
         raise HTTPException(400, f"unknown engine {engine_id!r}")
-    model_id = model_id or CONFIG.get("default_model") or None
+    if not model_id:
+        model_id = (last.get("model") if last.get("engine") == engine_id else None) \
+            or CONFIG.get("default_model") or None
+    if not params and last.get("engine") == engine_id:
+        params = last.get("params") or None
+    if not language and last.get("engine") == engine_id:
+        language = last.get("language") or None
 
-    voice_slug = voice_slug or CONFIG.get("default_voice")
+    if not voice_slug:
+        for candidate in (last.get("voice"), CONFIG.get("default_voice")):
+            if _voice_exists(candidate):
+                voice_slug = candidate
+                break
     refs, voice_params = [], {}
     if voice_slug:
         voice = V.get_voice(voice_slug)
@@ -225,6 +256,12 @@ def _synthesize(text: str, voice_slug: str | None, engine_id: str | None,
     }
     out_path.with_suffix(".json").write_text(
         json.dumps(sidecar, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    CONFIG["last_used"] = {
+        "voice": voice_slug, "engine": engine_id, "model": resp.get("model"),
+        "params": merged, "language": language,
+    }
+    save_config(CONFIG)
     return out_path
 
 
