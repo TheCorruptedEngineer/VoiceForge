@@ -1,7 +1,8 @@
 {
   "id": "xtts",
   "name": "XTTS-v2 (Coqui) — multi-clip clone",
-  "blurb": "Conditions on ALL your reference clips at once (the more/longer audio, the steadier the clone), 16 languages. ⚠ Weights are CPML: personal/research use only, NOT for a commercial product.",
+  "blurb": "Conditions on ALL your reference clips at once (the more/longer audio, the steadier the clone), 16 languages.",
+  "badge": { "color": "blue", "tip": "Non-commercial license (Coqui CPML). Fine for personal use, testing and comparison — but this voice/output cannot ship in a paid or ad-supported product." },
   "python": "3.11",
   "supports_mixing": false,
   "needs_ref_transcript": false,
