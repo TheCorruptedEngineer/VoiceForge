@@ -73,7 +73,14 @@ launcher, CLI, Claude Code skill, gallery integration doc.
   New-engine gotchas: native speed param is `native_speed` (postfx `speed`
   skipped in those workers); kokoro langs are pipeline codes (a/b/e/f/…).
 - Engines added 2026-07-11 (3rd pass): **indextts** (IndexTTS-2, yellow ✱
-  heavy). Git-based install (not on PyPI): requirements uses
+  heavy). VERIFIED live on the 8 GB 3060 Ti: loads fp16 without OOM,
+  emotion-from-text works ("calm and warm" → emotion vector), real speech
+  out. Speed: ~105 s cold, **~67 s warm for a short sentence** — by far the
+  slowest engine (kokoro 0.2 s, f5 0.85 s, chatterbox ~5 s for comparison).
+  The yellow badge is accurate: use it for quality A/B, not for anything
+  latency-sensitive. Gotcha burned: checkpoint download must NOT use a
+  narrow allow-list — the model needs feat1.pt/feat2.pt/wav2vec2bert_stats.pt
+  (setup.py now uses ignore_patterns). Git-based install (not on PyPI): requirements uses
   `indextts @ git+…`, needs torch==2.8.*+cu128 (its pin), and the install
   pipeline now passes `--index-strategy unsafe-best-match` (torch index +
   PyPI mix) and runs an optional per-engine `setup.py` post-install hook
