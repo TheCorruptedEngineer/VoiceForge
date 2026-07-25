@@ -107,7 +107,5 @@ No server changes needed.
 
 - Chatterbox output carries Resemble's inaudible Perth watermark (responsible-AI
   marker baked into the upstream model wrapper).
-- Serbian isn't in Chatterbox's 23 languages; closest are Russian/Polish.
-  English is the primary use case.
 - GPU is serialized: one generation at a time, `exclusive_gpu` keeps a single
   engine resident (both configurable in Settings).
