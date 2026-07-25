@@ -195,7 +195,17 @@
   }
   .param label b { color: var(--accent-bright); font-weight: 500; }
   .param .help { font-size: 11px; color: var(--ink-faint); margin-top: 4px; }
-  .param input[type=text] { width: 100%; }
+  .param input[type=text], .param select { width: 100%; }
+  .toggle-param label { justify-content:flex-start; gap:10px; cursor:pointer; }
+  .toggle-param input { position:absolute; opacity:0; pointer-events:none; }
+  .toggle-param label i { width:30px; height:16px; margin-left:auto; border:1px solid var(--line-bright); background:rgba(0,0,0,.3); position:relative; transition:border-color 150ms ease,background 150ms ease; }
+  .toggle-param label i::after { content:''; position:absolute; width:10px; height:10px; left:2px; top:2px; background:var(--ink-faint); transition:transform 160ms var(--ease-out),background 150ms ease; }
+  .toggle-param input:checked + i { border-color:var(--accent-dim); background:var(--accent-soft); }
+  .toggle-param input:checked + i::after { transform:translateX(14px); background:var(--accent); }
+  .toggle-param input:focus-visible + i { outline:2px solid var(--accent-bright); outline-offset:2px; }
+  .fx-presets { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:-2px 0 16px; }
+  .fx-presets .microlabel { margin-right:2px; }
+  .fx-presets button { padding:5px 10px; }
   /* industrial range slider (Mythos .zoom) */
   input[type=range] {
     -webkit-appearance: none; appearance: none; width: 100%;
@@ -345,6 +355,58 @@
   @keyframes sp { to { transform: rotate(360deg); } }
   .chev { margin-left: 7px; overflow: visible; flex: none; filter: drop-shadow(0 0 3px var(--accent-dim)); }
   .chev.up { transform: scaleY(-1); }
+
+  /* ---- Forge desk: composition-first layout ---- */
+  :root { --panel-glass: rgba(13,13,19,.88); --ease-out: cubic-bezier(.23,1,.32,1); }
+  header { min-height: 72px; gap: 12px; padding: 10px 22px; }
+  .brand { margin-right: 8px; min-width: 188px; }
+  .engine-picker { display: grid; grid-template-columns: minmax(220px,1.3fr) minmax(220px,1fr); gap: 8px; flex:1; max-width:820px; }
+  .select-stack { position: relative; display: flex; align-items: center; }
+  .select-stack .microlabel { position: absolute; left: 10px; top: 5px; z-index: 1; pointer-events: none; }
+  .select-stack select { width: 100%; height: 49px; padding: 20px 32px 6px 10px; border-color: var(--line); background: rgba(8,8,12,.72); }
+  .select-stack select:focus { border-color: var(--accent-dim); box-shadow: 0 0 0 3px rgba(177,60,255,.08); }
+  #engine-badge { margin-left: -2px; margin-right: 2px; }
+  button { transition: transform 140ms var(--ease-out), border-color 150ms ease, color 150ms ease, background 150ms ease; }
+  button:active:not(:disabled) { transform: scale(.97); }
+  #content { padding: 24px clamp(18px,3vw,42px) 60px; }
+  #content-inner { width: min(1500px,100%); margin: 0 auto; display:grid; grid-template-columns:minmax(0,1fr) minmax(360px,430px); gap:16px; align-items:start; }
+  #forge-main { min-width:0; }
+  .section { margin-bottom: 16px; padding: 18px 20px; background: var(--panel-glass); border: 1px solid var(--line); box-shadow: 0 18px 50px rgba(0,0,0,.12); clip-path: polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px)); }
+  .section.compose { padding: 22px; border-color: rgba(177,60,255,.24); background: linear-gradient(135deg,rgba(177,60,255,.09),transparent 38%),var(--panel-glass); }
+  .compose-kicker { color: var(--accent-bright); }
+  .compose-meta { display:flex; align-items:center; gap:10px; margin-top:8px; color:var(--ink-faint); font:10px var(--font-mono); letter-spacing:.08em; text-transform:uppercase; }
+  .compose-meta .grow { flex:1; }
+  kbd { border:1px solid var(--line-bright); background:rgba(0,0,0,.22); padding:2px 6px; font:10px var(--font-mono); color:var(--ink-dim); }
+  #text-in { min-height: 164px; font-size: 16px; line-height: 1.65; padding: 16px 17px; border-color: rgba(255,255,255,.1); }
+  #result:empty { display:none; }
+  #result:not(:empty) { padding: 10px 12px; border:1px solid var(--line); background:rgba(0,0,0,.22); }
+  .history-toolbar { display:grid; grid-template-columns:minmax(180px,1fr) 180px 160px auto; gap:8px; margin-bottom:12px; }
+  .history-toolbar input, .history-toolbar select { width:100%; height:36px; }
+  .history-toolbar button { white-space:nowrap; }
+  .saved-label { color:var(--ok); border-color:rgba(76,195,138,.35); }
+  .saved-label .dot { background:var(--ok); }
+  .hist { padding: 14px 16px 12px; transition: border-color 150ms ease, background 150ms ease; }
+  .hist:hover { background:rgba(22,22,30,.9); }
+  .hist-saved { font:9px var(--font-mono); color:var(--ok); letter-spacing:.12em; text-transform:uppercase; }
+  .hist-actions { display:flex; gap:12px; align-items:center; }
+  .hist-delete { color:var(--ink-faint); }
+  .hist-delete:hover { color:var(--err); }
+  .history-error { padding:18px; border:1px solid rgba(255,93,93,.25); color:var(--err); text-align:center; }
+  .history-section { position:sticky; top:14px; max-height:calc(100vh - 115px); overflow:auto; scrollbar-gutter:stable; }
+  .history-section .history-toolbar { grid-template-columns:1fr 1fr; }
+  .history-section .history-toolbar #hist-search { grid-column:1 / -1; }
+  .history-section .history-toolbar button { justify-self:end; }
+  .history-section .hist-head { gap:6px; }
+  .history-section .hist-time { flex-basis:100%; margin-left:0; }
+  .history-section .hist-actions { width:100%; justify-content:flex-end; flex-wrap:wrap; }
+  .microlabel,.section > h3,.param label { font-size:11px; }
+  .param .help,.muted { font-size:12px; color:rgba(232,230,240,.46); }
+  .voice-card .vmeta { font-size:11px; }
+  .side-note { margin: 8px 12px 14px; padding:10px 11px; border-top:1px solid var(--line); font-size:11px; color:var(--ink-faint); }
+  @media (max-width: 1450px) { #content-inner { grid-template-columns:1fr; max-width:1120px; } .history-section { position:static; max-height:none; } .history-section .history-toolbar { grid-template-columns:minmax(180px,1fr) 180px 160px auto; } .history-section .history-toolbar #hist-search { grid-column:auto; } }
+  @media (max-width: 980px) { header { flex-wrap:wrap; } .engine-picker { order:3; width:100%; max-width:none; grid-template-columns:1fr 1fr; } #sidebar { width:240px; } }
+  @media (max-width: 720px) { body { height:auto; min-height:100vh; overflow:auto; } header { position:sticky; top:0; } main { display:block; } #sidebar { width:100%; max-height:210px; border-right:0; border-bottom:1px solid var(--line); } #content { overflow:visible; } .engine-picker,.history-toolbar,.history-section .history-toolbar { grid-template-columns:1fr; } .history-section .history-toolbar #hist-search { grid-column:auto; } .section { padding:16px; } .ref-row { flex-wrap:wrap; } .ref-row .rname,.ref-row audio { flex:1 1 100%; } }
+  @media (prefers-reduced-motion: reduce) { *,*::before,*::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; scroll-behavior:auto !important; } }
 </style>
 </head>
 <body>
@@ -354,9 +416,11 @@
     <div class="t">VOICE<em>FORGE</em></div>
     <div class="microlabel">local voice synthesis · sector 8484</div>
   </div>
-  <select id="engine-sel" title="Engine"></select>
+  <div class="engine-picker">
+    <label class="select-stack"><span class="microlabel">Engine</span><select id="engine-sel" title="Engine"></select></label>
+    <label class="select-stack"><span class="microlabel">Model</span><select id="model-sel" title="Model"></select></label>
+  </div>
   <span id="engine-badge"></span>
-  <select id="model-sel" title="Model"></select>
   <span id="engine-pill" class="pill"><span class="dot"></span><span class="txt">idle</span></span>
   <div style="flex:1"></div>
   <button id="btn-engines">Engines</button>
@@ -368,16 +432,21 @@
   <div id="sidebar">
     <div class="side-head"><h2>Voice Library</h2><button id="btn-new-voice">+ New</button></div>
     <div id="voice-list"></div>
+    <div class="side-note">Reference clips stay on this PC. Choose a voice, forge a take, then compare it in the local library.</div>
   </div>
 
   <div id="content">
-    <div class="section">
+   <div id="content-inner">
+    <div id="forge-main">
+    <div class="section compose" id="compose">
       <div class="row" style="margin-bottom:10px">
-        <h3 style="margin:0">Speak as</h3>
+        <h3 class="compose-kicker" style="margin:0">Compose a take</h3>
+        <span class="microlabel">Speak as</span>
         <span id="cur-voice" class="pill on"><span class="dot"></span><span class="txt">— none —</span></span>
         <select id="lang-sel" title="Language"></select>
       </div>
       <textarea id="text-in" placeholder="Type what you want spoken…"></textarea>
+      <div class="compose-meta"><span id="char-count">0 characters</span><span class="grow"></span><span>Generate with <kbd>Ctrl</kbd> + <kbd>Enter</kbd></span></div>
       <div class="row" style="margin-top:12px">
         <button id="btn-generate" class="primary">Generate ▶</button>
         <button id="btn-cancel" class="danger" style="display:none">Cancel ✕</button>
@@ -395,6 +464,9 @@
     <div class="section">
       <h3>Output shaping <span id="fx-pill" class="pill"><span class="dot"></span><span class="txt">live after first take</span></span>
         <button id="btn-reset-fx" title="Reset pitch / speed / formant / clarity to defaults for this engine" style="margin-left:auto">Reset shaping</button></h3>
+      <div class="fx-presets"><span class="microlabel">Mastering</span>
+        <button data-fx-preset="natural">Natural</button><button data-fx-preset="clean">Clean</button><button data-fx-preset="broadcast">Broadcast</button><button data-fx-preset="intimate">Intimate</button>
+      </div>
       <div id="params-fx" class="params"></div>
       <div class="muted" style="margin-top:8px">These shape the finished audio — move them while it plays and the take updates in place, no regeneration.</div>
     </div>
@@ -412,12 +484,21 @@
       <div class="muted">10–30s of clean speech per clip. Several clips of the <b>same person</b> = steadier clone.
         Clips of <b>different people</b> + weights = a mixed voice (Chatterbox only).</div>
     </div>
+    </div>
 
-    <div class="section">
-      <h3>History <span id="hist-count" class="microlabel" style="margin-left:2px"></span></h3>
+    <div class="section history-section">
+      <h3>Take library <span id="hist-count" class="microlabel" style="margin-left:2px"></span>
+        <span class="pill saved-label"><span class="dot"></span><span class="txt">saved locally</span></span></h3>
+      <div class="history-toolbar">
+        <input id="hist-search" type="text" placeholder="Search text, voice, model…" aria-label="Search history">
+        <select id="hist-engine" aria-label="Filter history by engine"><option value="">All engines</option></select>
+        <select id="hist-voice" aria-label="Filter history by voice"><option value="">All voices</option></select>
+        <button id="btn-refresh-history">Refresh</button>
+      </div>
       <div id="history"></div>
       <div id="hist-controls" class="row" style="justify-content:center;margin-top:4px"></div>
     </div>
+   </div>
   </div>
 </main>
 
@@ -471,6 +552,7 @@ const state = {
   recording: null, session: {},
   lastOutput: null,   // output wav name of the last take — target of live shaping
   renderedSpeed: 1,   // speed baked into the audio currently in the player
+  historyItems: [], historyLimit: 25,
 };
 
 /* last-used engine/model/voice/params, restored on reload (session > voice defaults) */
@@ -485,6 +567,7 @@ function saveSession() {
   state.session.model = state.model;
   state.session.voice = state.voice;
   state.session.language = $("lang-sel").value || null;
+  state.session.draft = $("text-in").value;
   state.session.lastOutput = state.lastOutput;
   state.session.paramsByEngine[state.engine] = { ...state.params };
   localStorage.setItem(LS_KEY, JSON.stringify(state.session));
@@ -531,15 +614,20 @@ function badgeMark(e) {  // trailing marker for a native <option> (no color/hove
   return e.badge ? (e.badge.color === "yellow" ? " ⚠" : " ✱") : "";
 }
 
+function modelBadgeMark(model) {
+  return model?.badge ? " ✱" : "";
+}
+
 function renderEngineSel() {
   $("engine-sel").innerHTML = state.engines.map(e =>
-    `<option value="${e.id}" ${e.id === state.engine ? "selected" : ""}>${e.name}${badgeMark(e)}${e.installed ? "" : " (not installed)"}</option>`).join("");
+    `<option value="${e.id}" ${e.id === state.engine ? "selected" : ""}>${e.recommended ? "★ " : ""}${e.name}${badgeMark(e)}${e.installed ? "" : " (not installed)"}</option>`).join("");
   const eng = curEngine();
-  const b = eng?.badge;
+  const activeModel = eng?.models.find(m => m.id === state.model);
+  const b = activeModel?.badge || eng?.badge;
   $("engine-badge").innerHTML = b
     ? `<span class="badge-star ${b.color}" title="${(b.tip || "").replace(/"/g, "&quot;")}">✱</span>` : "";
   $("model-sel").innerHTML = (eng?.models || []).map(m =>
-    `<option value="${m.id}" ${m.id === state.model ? "selected" : ""}>${m.name}</option>`).join("");
+    `<option value="${m.id}" ${m.id === state.model ? "selected" : ""}>${m.name}${modelBadgeMark(m)}</option>`).join("");
   const langs = eng?.languages || [];
   $("lang-sel").innerHTML = langs.map(l => `<option value="${l}">${l}</option>`).join("");
   const vlang = state.voice ? (state.voices.find(v => v.slug === state.voice)?.language || "") : "";
@@ -563,15 +651,30 @@ function renderParams() {
   $("params-fx").innerHTML = "";
   state.params = {};
   (eng?.params || []).forEach(p => {
+    if (p.models && !p.models.includes(state.model)) return;
     const val = saved[p.key] !== undefined ? saved[p.key] : p.default;
     state.params[p.key] = val;
     const box = p.postfx ? $("params-fx") : $("params");
     const div = document.createElement("div");
     div.className = "param";
     if (p.type === "text") {
-      div.innerHTML = `<label>${p.label}</label><input type="text" data-k="${p.key}" value="${val || ""}">
+      div.innerHTML = `<label>${p.label}</label><input type="text" data-k="${p.key}">
         <div class="help">${p.help || ""}</div>`;
+      div.querySelector("input").value = val || "";
       div.querySelector("input").oninput = e => { state.params[p.key] = e.target.value; saveSession(); };
+    } else if (p.type === "select") {
+      div.innerHTML = `<label>${p.label}</label><select data-k="${p.key}">${(p.options || []).map(o =>
+        `<option value="${o}" ${o === val ? "selected" : ""}>${o.replace(/_/g, " ")}</option>`).join("")}</select>
+        <div class="help">${p.help || ""}</div>`;
+      div.querySelector("select").onchange = e => {
+        state.params[p.key] = e.target.value; saveSession();
+        if (p.key === "speaker") renderVoices();
+      };
+    } else if (p.type === "bool") {
+      div.classList.add("toggle-param");
+      div.innerHTML = `<label><span>${p.label}</span><input type="checkbox" data-k="${p.key}" ${val ? "checked" : ""}><i></i></label>
+        <div class="help">${p.help || ""}</div>`;
+      div.querySelector("input").onchange = e => { state.params[p.key] = e.target.checked; saveSession(); };
     } else {
       div.innerHTML = `<label>${p.label} <b data-v="${p.key}">${val}</b></label>
         <input type="range" data-k="${p.key}" min="${p.min}" max="${p.max}" step="${p.step}" value="${val}">
@@ -604,6 +707,23 @@ function fxParams() {
   const out = {};
   (curEngine()?.params || []).forEach(p => { if (p.postfx) out[p.key] = state.params[p.key]; });
   return out;
+}
+
+const FX_PRESETS = {
+  natural: { clarity: 0, warmth: 0, sibilance: 0, compression: 0, normalize: 1 },
+  clean: { clarity: 0.35, warmth: 0, sibilance: 0.25, compression: 0.2, normalize: 1 },
+  broadcast: { clarity: 0.55, warmth: 0.15, sibilance: 0.2, compression: 0.45, normalize: 1 },
+  intimate: { clarity: 0.15, warmth: 0.4, sibilance: 0.15, compression: 0.3, normalize: 1 },
+};
+
+function applyFxPreset(name) {
+  const preset = FX_PRESETS[name];
+  if (!preset) return;
+  const available = new Set((curEngine()?.params || []).filter(p => p.postfx).map(p => p.key));
+  Object.entries(preset).forEach(([key, value]) => { if (available.has(key)) state.params[key] = value; });
+  saveSession(); renderParams();
+  if (state.lastOutput) runPostfx();
+  toast(`${name} mastering applied`);
 }
 
 function renderFxPill() {
@@ -675,9 +795,23 @@ function renderVoices() {
   }).join("") || `<div class="muted" style="padding:8px">No voices yet — create one and upload a 10–30s clip.</div>`;
   document.querySelectorAll(".voice-card").forEach(c =>
     c.onclick = () => selectVoice(c.dataset.slug === state.voice ? null : c.dataset.slug));
-  setPill($("cur-voice"), "on", state.voice
+  const presetVoice = state.engine === "qwen3tts" && state.model?.startsWith("customvoice_");
+  setPill($("cur-voice"), "on", presetVoice ? `Qwen · ${state.params.speaker || "Ryan"}` : state.voice
     ? state.voices.find(v => v.slug === state.voice)?.name : "— none —");
   renderVoiceDetail();
+  renderHistoryFilters();
+}
+
+function renderHistoryFilters() {
+  if (!$("hist-engine") || !$("hist-voice")) return;
+  const oldEngine = $("hist-engine").value;
+  const oldVoice = $("hist-voice").value;
+  $("hist-engine").innerHTML = `<option value="">All engines</option>` + state.engines.map(e =>
+    `<option value="${e.id}">${e.name}</option>`).join("");
+  $("hist-voice").innerHTML = `<option value="">All voices</option><option value="__default__">Engine default</option>` + state.voices.map(v =>
+    `<option value="${v.slug}">${v.name}</option>`).join("");
+  if ([...$("hist-engine").options].some(o => o.value === oldEngine)) $("hist-engine").value = oldEngine;
+  if ([...$("hist-voice").options].some(o => o.value === oldVoice)) $("hist-voice").value = oldVoice;
 }
 
 function selectVoice(slug) {
@@ -741,7 +875,8 @@ async function generate() {
     state.renderedSpeed = parseFloat(state.params.speed) || 1;
     fxSeq++;  // invalidate any in-flight re-shape of the previous take
     saveSession(); renderFxPill();
-    loadHistory();
+    await loadHistory();
+    toast("take saved to local history");
   } catch (e) {
     $("gen-status").textContent = "";
     if (/cancelled/i.test(e.message)) toast("generation cancelled");
@@ -764,6 +899,12 @@ function esc(s) {
   return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+function updateCharCount() {
+  const count = $("text-in").value.length;
+  const words = $("text-in").value.trim() ? $("text-in").value.trim().split(/\s+/).length : 0;
+  $("char-count").textContent = `${count} character${count === 1 ? "" : "s"} · ~${Math.ceil(words / 2.5)}s speech`;
+}
+
 // friendly "Engine Name · Model Name" for a history record's engine/model ids
 function modelLabel(engineId, modelId) {
   const eng = state.engines.find(e => e.id === engineId);
@@ -775,12 +916,30 @@ function modelLabel(engineId, modelId) {
 }
 
 async function loadHistory() {
-  const limit = state.historyLimit === 0 ? 0 : (state.historyLimit || 25);  // 0 = all
-  const r = await api(`/api/history?limit=${limit}`);
-  const items = r.items || [];
-  const total = r.total || items.length;
+  const limit = state.historyLimit === 0 ? 0 : (state.historyLimit || 25);
+  const query = new URLSearchParams({ limit, _: Date.now() });
+  const search = $("hist-search")?.value.trim();
+  const engine = $("hist-engine")?.value;
+  const voice = $("hist-voice")?.value;
+  if (search) query.set("q", search);
+  if (engine) query.set("engine", engine);
+  if (voice) query.set("voice", voice);
+  try {
+    const r = await api(`/api/history?${query}`, { cache: "no-store" });
+    const items = r.items || [];
+    state.historyItems = items;
+    const total = r.total ?? items.length;
+    const filtered = search || engine || voice;
+    $("hist-count").textContent = filtered ? `${items.length} / ${total} matches · ${r.total_all} saved` : `${items.length} / ${total}`;
+    renderHistoryItems(items, total);
+  } catch (e) {
+    $("history").innerHTML = `<div class="history-error">History could not be loaded. <button id="hist-retry">Retry</button><div class="muted">${esc(e.message)}</div></div>`;
+    $("hist-retry").onclick = loadHistory;
+    $("hist-controls").innerHTML = "";
+  }
+}
 
-  $("hist-count").textContent = total ? `${items.length} / ${total}` : "";
+function renderHistoryItems(items, total) {
   const ctl = $("hist-controls");
   ctl.innerHTML = "";
   if (items.length < total) {
@@ -790,7 +949,7 @@ async function loadHistory() {
     more.onclick = () => { state.historyLimit = (state.historyLimit || 25) + 25; loadHistory(); };
     const all = document.createElement("button");
     all.textContent = `Show all ${total}`;
-    all.onclick = () => { state.historyLimit = 0; loadHistory(); };  // 0 = all
+    all.onclick = () => { state.historyLimit = 0; loadHistory(); };
     ctl.append(more, all);
   } else if (total > 25) {
     const less = document.createElement("button");
@@ -799,42 +958,66 @@ async function loadHistory() {
     less.onclick = () => { state.historyLimit = 25; loadHistory(); $("history").scrollIntoView({ block: "nearest" }); };
     ctl.append(less);
   }
-
   if (!items.length) {
-    $("history").innerHTML = `<div class="muted">Nothing generated yet.</div>`;
+    $("history").innerHTML = `<div class="muted" style="padding:18px 2px">No saved takes match these filters.</div>`;
     return;
   }
   $("history").innerHTML = items.map(h => {
     const text = h.text || "";
     const long = text.length > 140 || text.includes("\n");
-    return `
-    <div class="hist">
+    return `<div class="hist" data-file="${esc(h.file)}">
       <div class="hist-head">
         <span class="hist-model" title="engine: ${esc(h.engine)}${h.model ? " · model: " + esc(h.model) : ""}">${esc(modelLabel(h.engine, h.model))}</span>
         <span class="hist-voice">${esc(h.voice || "engine default")}</span>
+        <span class="hist-saved">● saved</span>
         <span class="hist-time">${esc(h.created || "")}</span>
       </div>
       <div class="htext${long ? " clamp" : ""}">${esc(text)}</div>
       ${long ? `<button class="hist-more" data-more>show full text ${chev("desc")}</button>` : ""}
-      <audio src="${h.url}" controls preload="none"></audio>
+      <audio src="${h.url}?v=${h.modified || ""}" controls preload="none"></audio>
       <div class="hmeta">
-        <span>${h.seconds ? h.seconds + "s audio" : ""}${h.gen_time ? " · " + h.gen_time + "s gen" : ""}</span>
-        <span class="sp"></span>
-        <button class="hist-copy" data-copy="${esc(text).replace(/"/g, "&quot;")}">copy text</button>
-        <a href="${h.url}" download>download</a>
+        <span>${h.seconds ? h.seconds + "s audio" : ""}${h.gen_time ? " · " + h.gen_time + "s gen" : ""}</span><span class="sp"></span>
+        <span class="hist-actions"><button class="hist-copy" data-copy>copy text</button><button class="hist-copy" data-use>reuse setup</button><a href="${h.url}" download>download</a><button class="hist-copy hist-delete" data-delete>delete</button></span>
       </div>
     </div>`;
   }).join("");
-
   $("history").querySelectorAll("[data-more]").forEach(b => b.onclick = () => {
     const t = b.previousElementSibling;
-    const open = t.classList.toggle("clamp");  // toggle returns new state (true = now clamped)
-    b.innerHTML = open ? `show full text ${chev("desc")}` : `show less ${chev("asc")}`;
+    const clamped = t.classList.toggle("clamp");
+    b.innerHTML = clamped ? `show full text ${chev("desc")}` : `show less ${chev("asc")}`;
   });
-  $("history").querySelectorAll("[data-copy]").forEach(b => b.onclick = async () => {
-    try { await navigator.clipboard.writeText(b.dataset.copy); toast("text copied"); }
-    catch { toast("copy failed", true); }
+  $("history").querySelectorAll(".hist").forEach(card => {
+    const h = state.historyItems.find(x => x.file === card.dataset.file);
+    card.querySelector("[data-copy]").onclick = async () => {
+      try { await navigator.clipboard.writeText(h.text || ""); toast("text copied"); }
+      catch { toast("copy failed", true); }
+    };
+    card.querySelector("[data-use]").onclick = () => reuseHistoryItem(h);
+    card.querySelector("[data-delete]").onclick = () => deleteHistoryItem(h);
   });
+}
+
+function reuseHistoryItem(h) {
+  if (h.engine && state.engines.some(e => e.id === h.engine)) {
+    state.session.paramsByEngine[h.engine] = { ...(h.params || {}) };
+    if (h.actual_seed) state.session.paramsByEngine[h.engine].seed = h.actual_seed;
+    setEngine(h.engine, h.model);
+  }
+  state.voice = h.voice && state.voices.some(v => v.slug === h.voice) ? h.voice : null;
+  $("text-in").value = h.text || "";
+  updateCharCount(); renderVoices(); renderParams();
+  if (h.language && [...$("lang-sel").options].some(o => o.value === h.language)) $("lang-sel").value = h.language;
+  saveSession(); $("compose").scrollIntoView({ behavior: "smooth", block: "start" });
+  toast("take setup restored");
+}
+
+async function deleteHistoryItem(h) {
+  if (!confirm(`Delete this saved take?\n\n${(h.text || "").slice(0, 120)}`)) return;
+  try {
+    await api(`/api/history/${encodeURIComponent(h.file)}`, { method: "DELETE" });
+    if (state.lastOutput === h.file) { state.lastOutput = null; $("result").innerHTML = ""; saveSession(); renderFxPill(); }
+    await loadHistory(); toast("take deleted");
+  } catch (e) { toast("delete failed: " + e.message, true); }
 }
 
 // ------------------------------------------------------------- recording --
@@ -890,14 +1073,17 @@ async function toggleRecord() {
 function renderEnginesModal() {
   $("engines-list").innerHTML = state.engines.map(e => {
     const st = state.status[e.id] || {};
+    const modelCaveats = (e.models || []).filter(m => m.badge).map(m =>
+      `<div class="caveat ${m.badge.color}">✱ ${m.name}: ${m.badge.tip}</div>`).join("");
     let stateTxt = st.installing ? "installing…" : e.installed ? (st.running ? `loaded: ${st.loaded_model}` : "installed") : "not installed";
     return `<div class="engine-row" data-id="${e.id}">
       <div class="row" style="justify-content:space-between">
-        <b>${e.name}${e.badge ? `<span class="badge-star ${e.badge.color}" title="${(e.badge.tip || "").replace(/"/g, "&quot;")}">✱</span>` : ""}</b>
+        <b>${e.recommended ? '<span class="badge ok" style="margin-left:0;margin-right:8px">TOP PICK</span>' : ""}${e.name}${e.badge ? `<span class="badge-star ${e.badge.color}" title="${(e.badge.tip || "").replace(/"/g, "&quot;")}">✱</span>` : ""}</b>
         <span class="pill ${st.running ? "on" : ""}"><span class="dot"></span><span class="txt">${stateTxt}</span></span>
       </div>
       <div class="blurb">${e.blurb}</div>
       ${e.badge ? `<div class="caveat ${e.badge.color}">✱ ${e.badge.tip}</div>` : ""}
+      ${modelCaveats}
       <div class="row">
         ${e.installed ? "" : `<button data-install="${e.id}" class="primary" ${st.installing ? "disabled" : ""}>Install</button>`}
         ${st.running ? `<button data-unload="${e.id}">Unload (free VRAM)</button>` : ""}
@@ -983,6 +1169,8 @@ async function init() {
     state.voice = s.voice;
   else if (state.config.default_voice && state.voices.some(v => v.slug === state.config.default_voice))
     state.voice = state.config.default_voice;
+  $("text-in").value = s.draft || "";
+  updateCharCount();
   if (s.lastOutput) {  // last take survives a reload — live shaping keeps working
     state.lastOutput = s.lastOutput;
     state.renderedSpeed = parseFloat((s.paramsByEngine?.[defEngine] || {}).speed) || 1;
@@ -1004,12 +1192,20 @@ async function init() {
   }
 }
 
-$("engine-sel").onchange = e => { setEngine(e.target.value); saveSession(); };
-$("model-sel").onchange = e => { state.model = e.target.value; saveSession(); };
+$("engine-sel").onchange = e => { setEngine(e.target.value); saveSession(); refreshStatus(); };
+$("model-sel").onchange = e => { state.model = e.target.value; renderEngineSel(); renderParams(); renderVoices(); saveSession(); };
 $("lang-sel").onchange = () => saveSession();
 $("btn-generate").onclick = generate;
 $("btn-cancel").onclick = cancelGeneration;
 $("text-in").addEventListener("keydown", e => { if (e.key === "Enter" && e.ctrlKey) generate(); });
+$("text-in").addEventListener("input", () => { updateCharCount(); saveSession(); });
+let historySearchTimer;
+$("hist-search").addEventListener("input", () => {
+  clearTimeout(historySearchTimer);
+  historySearchTimer = setTimeout(() => { state.historyLimit = 25; loadHistory(); }, 180);
+});
+$("hist-engine").onchange = $("hist-voice").onchange = () => { state.historyLimit = 25; loadHistory(); };
+$("btn-refresh-history").onclick = () => loadHistory().then(() => toast("history refreshed"));
 $("btn-engines").onclick = () => { renderEnginesModal(); showModal("engines-modal"); };
 $("btn-settings").onclick = openSettings;
 $("btn-new-voice").onclick = () => { $("nv-name").value = ""; $("nv-lang").value = ""; showModal("newvoice-modal"); };
@@ -1061,6 +1257,9 @@ $("btn-reset-fx").onclick = () => {
   if (state.lastOutput) runPostfx();  // snap the current take back to clean
   toast("output shaping reset to defaults");
 };
+document.querySelectorAll("[data-fx-preset]").forEach(button => {
+  button.onclick = () => applyFxPreset(button.dataset.fxPreset);
+});
 $("btn-save-settings").onclick = async () => {
   state.config = await api("/api/config", { method: "PATCH", json: {
     default_engine: $("set-engine").value,

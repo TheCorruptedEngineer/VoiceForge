@@ -77,6 +77,13 @@ def save_config(cfg: dict):
         CONFIG_PATH.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
 
 
+def _write_json_atomic(path: Path, payload: dict):
+    """Never leave a half-written history/config sidecar after interruption."""
+    tmp = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(path)
+
+
 CONFIG = load_config()
 manager = EngineManager(lambda: CONFIG)
 
@@ -265,10 +272,10 @@ def _synthesize(text: str, voice_slug: str | None, engine_id: str | None,
         "text": text, "voice": voice_slug, "engine": engine_id,
         "model": resp.get("model"), "params": merged, "language": language,
         "seconds": resp.get("seconds"), "gen_time": round(time.time() - t0, 2),
+        "actual_seed": resp.get("seed"),
         "created": time.strftime("%Y-%m-%d %H:%M:%S"),
     }
-    out_path.with_suffix(".json").write_text(
-        json.dumps(sidecar, ensure_ascii=False, indent=2), encoding="utf-8")
+    _write_json_atomic(out_path.with_suffix(".json"), sidecar)
 
     CONFIG["last_used"] = {
         "voice": voice_slug, "engine": engine_id, "model": resp.get("model"),
@@ -338,8 +345,7 @@ def api_postfx(body: dict = Body(...)):
                 meta = json.loads(side.read_text(encoding="utf-8"))
                 meta["params"] = {**(meta.get("params") or {}), **fx}
                 meta["seconds"] = round(len(y) / sr, 2)
-                side.write_text(json.dumps(meta, ensure_ascii=False, indent=2),
-                                encoding="utf-8")
+                _write_json_atomic(side, meta)
             except (json.JSONDecodeError, OSError):
                 pass
 
@@ -394,24 +400,65 @@ def openai_speech(body: dict = Body(...)):
 # ---------------------------------------------------------------- history --
 
 @app.get("/api/history")
-def api_history(limit: int = 40, offset: int = 0):
-    """Paged history, newest first. Returns {total, items}; limit<=0 means all."""
+def api_history(limit: int = 40, offset: int = 0, q: str = "",
+                engine: str = "", voice: str = ""):
+    """Durable, searchable history. Disk is the source of truth."""
     items = []
     total = 0
+    total_all = 0
     if OUTPUTS.exists():
         wavs = sorted(OUTPUTS.glob("*.wav"), key=lambda p: p.stat().st_mtime, reverse=True)
-        total = len(wavs)
-        window = wavs[offset:] if limit <= 0 else wavs[offset:offset + limit]
-        for p in window:
+        total_all = len(wavs)
+        query = q.strip().casefold()
+        filtered = []
+        for p in wavs:
             meta = {}
             side = p.with_suffix(".json")
             if side.exists():
                 try:
                     meta = json.loads(side.read_text(encoding="utf-8"))
-                except json.JSONDecodeError:
+                except (json.JSONDecodeError, OSError, UnicodeError):
                     pass
-            items.append({"file": p.name, "url": f"/outputs/{p.name}", **meta})
-    return {"total": total, "items": items}
+            if engine and meta.get("engine") != engine:
+                continue
+            if voice == "__default__" and meta.get("voice"):
+                continue
+            if voice and voice != "__default__" and (meta.get("voice") or "") != voice:
+                continue
+            haystack = " ".join(str(meta.get(k) or "") for k in
+                                ("text", "voice", "engine", "model", "created")).casefold()
+            if query and query not in haystack:
+                continue
+            filtered.append({
+                "file": p.name,
+                "url": f"/outputs/{p.name}",
+                "saved": True,
+                "modified": p.stat().st_mtime,
+                **meta,
+            })
+        total = len(filtered)
+        items = filtered[offset:] if limit <= 0 else filtered[offset:offset + limit]
+    return JSONResponse(
+        {"total": total, "total_all": total_all, "items": items},
+        headers={"Cache-Control": "no-store, max-age=0"},
+    )
+
+
+@app.delete("/api/history/{filename}")
+def api_delete_history(filename: str):
+    """Delete one generated take and its metadata/raw cache, basename-only."""
+    name = Path(filename).name
+    if name != filename or not name.lower().endswith(".wav"):
+        raise HTTPException(400, "invalid history filename")
+    wav = OUTPUTS / name
+    if not wav.exists():
+        raise HTTPException(404, "history item not found")
+    for path in (wav, wav.with_suffix(".json"), RAW_DIR / name):
+        try:
+            path.unlink(missing_ok=True)
+        except OSError as exc:
+            raise HTTPException(500, f"could not remove {path.name}: {exc}")
+    return {"ok": True, "file": name}
 
 
 # ----------------------------------------------------------------- static --

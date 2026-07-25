@@ -27,6 +27,21 @@ MODELS_DIR = ROOT / "models"  # HF_HOME lives here so the project is self-contai
 LOAD_TIMEOUT = 3600   # first load may download several GB of weights
 TTS_TIMEOUT = 1800    # long texts on a mid GPU
 
+# Universal mastering controls are injected into every engine schema here.
+# Workers already share engines/_shared/postfx.py, so keeping this list central
+# avoids seven engine.json files drifting apart.
+MASTERING_PARAMS = [
+    {"key": "warmth", "label": "Warmth / body", "type": "float",
+     "min": -1, "max": 1, "step": 0.05, "default": 0, "postfx": True,
+     "help": "Positive adds low-mid body and softens the top; negative makes the voice leaner and brighter."},
+    {"key": "sibilance", "label": "Sibilance trim", "type": "float",
+     "min": 0, "max": 1, "step": 0.05, "default": 0, "postfx": True,
+     "help": "Tames sharp S and SH sounds with a gentle high-frequency shelf."},
+    {"key": "compression", "label": "Voice compression", "type": "float",
+     "min": 0, "max": 1, "step": 0.05, "default": 0, "postfx": True,
+     "help": "Evens out loud and quiet phrases. Keep below 0.5 for natural narration."},
+]
+
 
 class EngineError(RuntimeError):
     pass
@@ -54,7 +69,12 @@ class EngineSpec:
         return self.meta["models"][0]["id"]
 
     def public(self) -> dict:
-        return {**self.meta, "installed": self.installed}
+        out = {**self.meta, "installed": self.installed}
+        params = [dict(p) for p in self.meta.get("params", [])]
+        present = {p.get("key") for p in params}
+        params.extend(dict(p) for p in MASTERING_PARAMS if p["key"] not in present)
+        out["params"] = params
+        return out
 
 
 class Worker:
@@ -170,10 +190,14 @@ class EngineManager:
     def __init__(self, get_config):
         """get_config: zero-arg callable returning the live config dict."""
         self.get_config = get_config
-        self.specs: dict[str, EngineSpec] = {}
-        for d in sorted(ENGINES_DIR.iterdir()):
-            if (d / "engine.json").exists():
-                self.specs[d.name] = EngineSpec(d)
+        discovered = [EngineSpec(d) for d in ENGINES_DIR.iterdir()
+                      if (d / "engine.json").exists()]
+        # Catalog order is product guidance: strongest/recommended choices first,
+        # then the stable alphabetical fallback. Existing defaults still win.
+        discovered.sort(key=lambda spec: (
+            -int(spec.meta.get("priority", 0)), spec.meta.get("name", spec.id).casefold()
+        ))
+        self.specs: dict[str, EngineSpec] = {spec.id: spec for spec in discovered}
         self.workers: dict[str, Worker] = {}
         self.current_worker: Worker | None = None  # set while a tts runs
         self.gen_lock = threading.Lock()   # one GPU → one generation at a time

@@ -41,7 +41,7 @@ PEAK_CEIL = 0.94
 # The output-shaping params — what /api/postfx accepts and what the UI treats
 # as "live" (re-rendered from the cached raw take, no regeneration).
 POSTFX_KEYS = ("pitch_semitones", "formant_shift", "pitch_range", "speed",
-               "clarity", "normalize")
+               "clarity", "warmth", "sibilance", "compression", "normalize")
 
 
 def apply(wav: np.ndarray, sr: int, params: dict, log=lambda m: None) -> np.ndarray:
@@ -71,6 +71,15 @@ def apply(wav: np.ndarray, sr: int, params: dict, log=lambda m: None) -> np.ndar
     clarity = float(params.get("clarity") or 0.0)
     if clarity >= 0.02:
         wav = _clarity(wav, sr, min(clarity, 1.0), log)
+
+    warmth = max(-1.0, min(float(params.get("warmth") or 0.0), 1.0))
+    sibilance = max(0.0, min(float(params.get("sibilance") or 0.0), 1.0))
+    if abs(warmth) >= 0.02 or sibilance >= 0.02:
+        wav = _tone(wav, sr, warmth, sibilance, log)
+
+    compression = max(0.0, min(float(params.get("compression") or 0.0), 1.0))
+    if compression >= 0.02:
+        wav = _compress_voice(wav, sr, compression, log)
 
     if int(params.get("normalize", 1)):
         wav = _normalize(wav, sr, log)
@@ -205,6 +214,26 @@ def _rbj_highshelf(fc: float, sr: int, gain_db: float, s: float = 0.9):
     return b / a[0], a / a[0]
 
 
+def _rbj_lowshelf(fc: float, sr: int, gain_db: float, s: float = 0.9):
+    """RBJ low-shelf biquad, returns (b, a)."""
+    a_lin = 10.0 ** (gain_db / 40.0)
+    w = 2.0 * np.pi * fc / sr
+    cw, sw = np.cos(w), np.sin(w)
+    alpha = sw / 2.0 * np.sqrt((a_lin + 1 / a_lin) * (1 / s - 1) + 2)
+    sq = 2.0 * np.sqrt(a_lin) * alpha
+    b = np.array([
+        a_lin * ((a_lin + 1) - (a_lin - 1) * cw + sq),
+        2 * a_lin * ((a_lin - 1) - (a_lin + 1) * cw),
+        a_lin * ((a_lin + 1) - (a_lin - 1) * cw - sq),
+    ])
+    a = np.array([
+        (a_lin + 1) + (a_lin - 1) * cw + sq,
+        -2 * ((a_lin - 1) + (a_lin + 1) * cw),
+        (a_lin + 1) + (a_lin - 1) * cw - sq,
+    ])
+    return b / a[0], a / a[0]
+
+
 def _clarity(wav: np.ndarray, sr: int, amount: float, log) -> np.ndarray:
     """Speech-clarity EQ: rumble HPF, de-mud dip, presence bell, air shelf.
     All gains scale linearly with `amount` so the slider stays subtle."""
@@ -224,6 +253,44 @@ def _clarity(wav: np.ndarray, sr: int, amount: float, log) -> np.ndarray:
         y = signal.lfilter(b, a, y)
     log(f"postfx: clarity {amount:.2f} (presence {4.5 * amount:+.1f} dB @3.2k)")
     return y.astype(np.float32)
+
+
+def _tone(wav: np.ndarray, sr: int, warmth: float, sibilance: float, log) -> np.ndarray:
+    """Broad conservative mastering EQ, deliberately too gentle to alter identity."""
+    from scipy import signal
+
+    y = wav.astype(np.float64)
+    if abs(warmth) >= 0.02:
+        for b, a in (
+            _rbj_lowshelf(min(190, sr * 0.12), sr, 3.5 * warmth),
+            _rbj_highshelf(min(5200, sr * 0.32), sr, -1.8 * warmth),
+        ):
+            y = signal.lfilter(b, a, y)
+    if sibilance >= 0.02:
+        b, a = _rbj_highshelf(min(6200, sr * 0.32), sr, -6.0 * sibilance, 0.75)
+        y = signal.lfilter(b, a, y)
+    log(f"postfx: tone warmth {warmth:+.2f}, sibilance trim {sibilance:.2f}")
+    return y.astype(np.float32)
+
+
+def _compress_voice(wav: np.ndarray, sr: int, amount: float, log) -> np.ndarray:
+    """Smooth RMS speech compressor with a restrained ratio and no hard limiting."""
+    from scipy import ndimage, signal
+
+    x = wav.astype(np.float64)
+    window = max(8, int(sr * 0.012))
+    rms = np.sqrt(ndimage.uniform_filter1d(x * x, size=window, mode="nearest") + 1e-10)
+    level_db = 20.0 * np.log10(rms + 1e-10)
+    threshold = -14.0 - 8.0 * amount
+    ratio = 1.0 + 3.0 * amount
+    over = np.maximum(level_db - threshold, 0.0)
+    reduction_db = over * (1.0 - 1.0 / ratio)
+    target_gain = 10.0 ** (-reduction_db / 20.0)
+    sos = signal.butter(2, min(18.0, sr * 0.001), "lowpass", fs=sr, output="sos")
+    zi = signal.sosfilt_zi(sos) * target_gain[0]
+    gain, _ = signal.sosfilt(sos, target_gain, zi=zi)
+    log(f"postfx: compression {amount:.2f} (threshold {threshold:.1f} dB, ratio {ratio:.1f}:1)")
+    return (x * gain).astype(np.float32)
 
 
 def _normalize(wav: np.ndarray, sr: int, log) -> np.ndarray:
@@ -248,28 +315,48 @@ def _normalize(wav: np.ndarray, sr: int, log) -> np.ndarray:
 
 
 def preprocess_ref(path: str, log=lambda m: None) -> str:
-    """Clean a reference clip for cloning: mono, silence-trimmed, peak-normalized.
-    Cached as <path>.prep.wav next to the original; returns the path to use.
+    """Clean a reference: mono, de-DC, rumble-filtered, trimmed and levelled.
+    Cached as <path>.prep-v2.wav next to the original; returns the path to use.
     Falls back to the original on any failure or if trimming leaves <1s."""
     from pathlib import Path
 
     src = Path(path)
-    prep = Path(str(src) + ".prep.wav")
+    prep = Path(str(src) + ".prep-v2.wav")
     try:
         if prep.exists() and prep.stat().st_mtime >= src.stat().st_mtime:
             return str(prep)
         import librosa
         import soundfile as sf
+        from scipy import signal
         y, sr = librosa.load(str(src), sr=None, mono=True)
         yt, _ = librosa.effects.trim(y, top_db=35)
         if len(yt) < sr:  # over-trimmed — clip is quiet or short; keep original
             return str(src)
+        yt = yt - float(np.mean(yt))
+        yt = signal.sosfilt(signal.butter(2, 55, "highpass", fs=sr, output="sos"), yt)
+        gain_db = 0.0
+        try:
+            import pyloudnorm
+            loudness = pyloudnorm.Meter(sr).integrated_loudness(yt.astype(np.float64))
+            if np.isfinite(loudness):
+                gain_db = max(-12.0, min(-23.0 - loudness, 12.0))
+                yt = yt * (10.0 ** (gain_db / 20.0))
+        except Exception:
+            rms = float(np.sqrt(np.mean(yt * yt)) or 0.0)
+            if rms > 0:
+                gain_db = max(-12.0, min(20 * np.log10(0.08 / rms), 12.0))
+                yt = yt * (10.0 ** (gain_db / 20.0))
         peak = float(np.abs(yt).max() or 0.0)
-        if peak > 0:
+        if peak > 0.9:
             yt = yt / peak * 0.9
+        fade = min(int(sr * 0.012), len(yt) // 4)
+        if fade:
+            ramp = np.linspace(0.0, 1.0, fade, dtype=np.float32)
+            yt[:fade] *= ramp
+            yt[-fade:] *= ramp[::-1]
         sf.write(str(prep), yt, sr)
         cut = (len(y) - len(yt)) / sr
-        log(f"ref prep: {src.name} trimmed {cut:.1f}s silence, normalized")
+        log(f"ref prep v2: {src.name} trimmed {cut:.1f}s, de-rumbled, levelled {gain_db:+.1f} dB")
         return str(prep)
     except Exception as e:
         log(f"ref prep failed for {src.name} ({e}); using raw clip")

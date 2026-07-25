@@ -20,7 +20,9 @@ Nothing ever leaves this machine. Models download once into `models/`.
 | **Chatterbox Multilingual V3** (default) | The open family that **beat ElevenLabs 63.75%** in blind A/B listening tests. 23 languages, expressiveness + pacing knobs, voice mixing. | MIT | ~4–6 GB |
 | **Chatterbox Turbo** | 350M, English, fast — supports `<laugh>` etc. | MIT | ~3 GB |
 | **Qwen3-TTS 1.7B/0.6B Base** | 3-second rapid cloning, different timbre flavor. | Apache-2.0 | ~4–5 GB |
+| **Qwen3-TTS CustomVoice 1.7B/0.6B** | Nine consistent preset voices; 1.7B adds natural-language emotion and delivery instructions. | Apache-2.0 | ~3–5 GB |
 | **Qwen3-TTS VoiceDesign** | Describe a voice in words ("deep calm narrator") → get it. | Apache-2.0 | ~5 GB |
+| **LongCat-AudioDiT 1B / 3.5B** | SOTA zero-shot clone similarity on Seed. 1B is the normal 8 GB choice; 3.5B carries a yellow high-VRAM mark. | MIT | ~6–8 GB / >8 GB |
 | **F5-TTS v1** | Fast flow-matching cloning (near real-time warm at NFE 16), low hallucination on long text, auto-transcribes refs. | MIT | ~3 GB |
 | **Kokoro-82M** | Faster than real time, excellent built-in voices — the instant engine for say.cmd/notifications. **No cloning.** | Apache-2.0 | <2 GB |
 | **XTTS-v2** ✱ | Conditions on **all reference clips at once** — feed it minutes of audio for a steadier clone. 16 languages. | blue ✱ CPML: **non-commercial** | ~4 GB |
@@ -56,13 +58,16 @@ Post-FX runs on the finished audio inside each worker (`engines/_shared/postfx.p
 **Pitch** (±12 st, TD-PSOLA — natural, formant-preserving), **Formant /
 character** (±4 st, vocal-tract size independent of pitch), **Speed**
 (0.5–1.6×, pitch-preserving), **Clarity** (0–1 intelligibility EQ: less mud,
-more presence/air), **Loudness normalize** (-18 LUFS, on by default).
-Reference clips are also auto-cleaned before cloning (silence-trim + peak
-normalize, cached as `<clip>.prep.wav`) — steadies clones from rough
-recordings.
+more presence/air), **Warmth**, **Sibilance trim**, **Voice compression**, and
+**Loudness normalize** (-18 LUFS, on by default). Natural, Clean, Broadcast,
+and Intimate presets set the mastering controls without changing pitch/speed.
+Reference clips are also auto-cleaned before cloning (silence trim, DC/rumble
+removal, conservative loudness levelling and edge fades, cached as
+`<clip>.prep-v2.wav`) — steadies clones from rough recordings.
 
-Chatterbox needs no transcript. Qwen3-TTS needs the clip's transcript and will
-auto-transcribe once with faster-whisper (cached in a `<clip>.txt` sidecar).
+Chatterbox needs no transcript. Qwen3-TTS full ICL cloning auto-transcribes a
+clip once with faster-whisper (cached in a `<clip>.txt` sidecar); its optional
+fast timbre-only mode skips the transcript at some cost to style/identity.
 
 ## API (how other apps integrate)
 

@@ -1,0 +1,36 @@
+{
+  "id": "longcat",
+  "name": "LongCat-AudioDiT (Meituan)",
+  "priority": 100,
+  "recommended": true,
+  "blurb": "New quality leader for zero-shot voice cloning. The official Seed benchmark puts both LongCat sizes above Qwen3-TTS, IndexTTS-2, MOSS-TTS and F5-TTS for speaker similarity.",
+  "python": "3.12",
+  "supports_mixing": false,
+  "needs_ref_transcript": true,
+  "models": [
+    { "id": "1b", "name": "1B — recommended · SOTA clone similarity · 8 GB target", "default": true },
+    { "id": "3_5b", "name": "3.5B — flagship quality · experimental on 8 GB", "default": false,
+      "badge": { "color": "yellow", "tip": "High VRAM: the 3.5B flagship may run out of memory on this 8 GB GPU. Use the 1B model for normal work." } }
+  ],
+  "languages": ["Auto", "English", "Chinese"],
+  "params": [
+    { "key": "steps", "label": "Quality steps", "type": "int", "min": 8, "max": 32, "step": 2, "default": 16,
+      "help": "16 is the official quality default. More steps are slower and usually give diminishing returns." },
+    { "key": "guidance_strength", "label": "Voice guidance", "type": "float", "min": 1.0, "max": 7.0, "step": 0.25, "default": 4.0,
+      "help": "How strongly the result follows the text and voice prompt. 4.0 is the official default." },
+    { "key": "seed", "label": "Seed (0 = random)", "type": "int", "min": 0, "max": 999999, "step": 1, "default": 0,
+      "help": "Fix a seed to reproduce a take you liked." },
+    { "key": "pitch_semitones", "label": "Pitch (semitones)", "type": "float", "min": -12, "max": 12, "step": 0.5, "default": 0, "postfx": true,
+      "help": "Shift pitch while preserving vocal character. ±2–4 stays most natural." },
+    { "key": "formant_shift", "label": "Formant / character", "type": "float", "min": -4, "max": 4, "step": 0.25, "default": 0, "postfx": true,
+      "help": "Change apparent vocal-tract size independently of pitch." },
+    { "key": "pitch_range", "label": "Intonation range", "type": "float", "min": 0, "max": 2.5, "step": 0.05, "default": 1, "postfx": true,
+      "help": "0 is monotone, 1 keeps the generated performance, 1.5+ exaggerates pitch movement." },
+    { "key": "speed", "label": "Speed", "type": "float", "min": 0.5, "max": 1.6, "step": 0.05, "default": 1.0, "postfx": true,
+      "help": "Playback tempo without changing pitch." },
+    { "key": "clarity", "label": "Clarity", "type": "float", "min": 0, "max": 1, "step": 0.05, "default": 0, "postfx": true,
+      "help": "Speech EQ: reduce mud and add presence/air." },
+    { "key": "normalize", "label": "Loudness normalize (0/1)", "type": "int", "min": 0, "max": 1, "step": 1, "default": 1, "postfx": true,
+      "help": "Match takes to a consistent -18 LUFS." }
+  ]
+}

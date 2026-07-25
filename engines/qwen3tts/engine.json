@@ -8,6 +8,8 @@
   "models": [
     { "id": "base_1_7b", "name": "1.7B Base — best cloning quality", "default": true },
     { "id": "base_0_6b", "name": "0.6B Base — lightweight, ~3 GB VRAM", "default": false },
+    { "id": "customvoice_1_7b", "name": "1.7B CustomVoice — 9 stable voices + style control", "default": false },
+    { "id": "customvoice_0_6b", "name": "0.6B CustomVoice — fast preset voices", "default": false },
     { "id": "voicedesign_1_7b", "name": "1.7B VoiceDesign — voice from a text description", "default": false }
   ],
   "languages": [
@@ -15,14 +17,25 @@
     "Spanish", "Japanese", "Korean", "French", "Russian"
   ],
   "params": [
-    { "key": "voice_description", "label": "Voice description (VoiceDesign model)", "type": "text", "default": "",
+    { "key": "voice_description", "label": "Voice description", "type": "text", "default": "", "models": ["voicedesign_1_7b"],
       "help": "E.g. 'A warm, deep male narrator voice, slow and calm'. Only used by the VoiceDesign model." },
+    { "key": "speaker", "label": "Preset speaker", "type": "select", "default": "Ryan", "models": ["customvoice_1_7b", "customvoice_0_6b"],
+      "options": ["Aiden", "Ryan", "Serena", "Vivian", "Sohee", "Ono_Anna", "Uncle_Fu", "Eric", "Dylan"],
+      "help": "Nine official Qwen voices. Aiden/Ryan are native English; each speaker can speak any supported language." },
+    { "key": "style_instruction", "label": "Delivery instruction", "type": "text", "default": "", "models": ["customvoice_1_7b"],
+      "help": "Natural-language direction, e.g. 'Speak slowly, warmly, and with restrained excitement.'" },
+    { "key": "x_vector_only", "label": "Fast timbre-only clone", "type": "bool", "default": false, "models": ["base_1_7b", "base_0_6b"],
+      "help": "Skips reference transcription. Faster setup, but full ICL cloning usually preserves style and identity better." },
     { "key": "seed", "label": "Seed (0 = random)", "type": "int", "min": 0, "max": 999999, "step": 1, "default": 0,
       "help": "Fix a seed to reproduce a take you liked." },
     { "key": "temperature", "label": "Temperature", "type": "float", "min": 0.05, "max": 1.5, "step": 0.05, "default": 0.9,
       "help": "Sampling randomness. Lower = more consistent, higher = more varied takes." },
     { "key": "top_p", "label": "Top-p", "type": "float", "min": 0.1, "max": 1.0, "step": 0.05, "default": 1.0,
       "help": "Nucleus sampling cutoff. Lower = safer, more predictable delivery." },
+    { "key": "top_k", "label": "Top-k", "type": "int", "min": 10, "max": 100, "step": 5, "default": 50,
+      "help": "Limits each sampling step to the most likely tokens. 50 is Qwen's documented quality default." },
+    { "key": "repetition_penalty", "label": "Repetition guard", "type": "float", "min": 1.0, "max": 1.3, "step": 0.01, "default": 1.05,
+      "help": "Reduces repeated syllables or phrases. Raise gently; high values can hurt naturalness." },
     { "key": "pitch_semitones", "label": "Pitch (semitones)", "type": "float", "min": -12, "max": 12, "step": 0.5, "default": 0, "postfx": true,
       "help": "Shift the voice up/down, keeping the speaker's timbre (TD-PSOLA). ±2–4 stays natural." },
     { "key": "formant_shift", "label": "Formant / character", "type": "float", "min": -4, "max": 4, "step": 0.25, "default": 0, "postfx": true,

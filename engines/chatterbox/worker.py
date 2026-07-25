@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import inspect
 import json
+import random
 import re
 import sys
 import traceback
@@ -153,9 +154,10 @@ def do_tts(msg: dict) -> dict:
     language = msg.get("language") or "en"
     out_path = msg["out"]
 
-    seed = int(params.get("seed") or 0)
-    if seed > 0:
-        torch.manual_seed(seed)
+    seed = int(params.get("seed") or random.randint(1, 999999))
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
 
     exaggeration = float(params.get("exaggeration", 0.5))
     if refs:
@@ -190,7 +192,7 @@ def do_tts(msg: dict) -> dict:
     y = postfx.apply(raw, MODEL.sr, params, log)
     sf.write(out_path, y, MODEL.sr)
     return {"out": out_path, "seconds": round(len(y) / MODEL.sr, 2),
-            "model": MODEL_ID, "chunks": len(chunks)}
+            "model": MODEL_ID, "chunks": len(chunks), "seed": seed}
 
 
 def main():

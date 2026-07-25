@@ -11,6 +11,7 @@ the first time a clip is used.
 from __future__ import annotations
 
 import json
+import random
 import sys
 import traceback
 from pathlib import Path
@@ -34,6 +35,8 @@ WHISPER = None
 MODEL_REPOS = {
     "base_1_7b": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
     "base_0_6b": "Qwen/Qwen3-TTS-12Hz-0.6B-Base",
+    "customvoice_1_7b": "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice",
+    "customvoice_0_6b": "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice",
     "voicedesign_1_7b": "Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign",
 }
 
@@ -63,10 +66,17 @@ def load_model(model_id: str):
     repo = MODEL_REPOS[model_id]
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
     log(f"loading {repo} on {device} … (first run downloads weights)")
+    if torch.cuda.is_available():
+        torch.backends.cuda.matmul.allow_tf32 = True
     try:
-        MODEL = Qwen3TTSModel.from_pretrained(repo, device_map=device, dtype=torch.bfloat16)
-    except TypeError:
-        MODEL = Qwen3TTSModel.from_pretrained(repo, device_map=device)
+        MODEL = Qwen3TTSModel.from_pretrained(
+            repo, device_map=device, dtype=torch.bfloat16, attn_implementation="sdpa")
+    except (TypeError, ValueError):
+        log("SDPA load option unsupported by this qwen-tts build; using compatibility path")
+        try:
+            MODEL = Qwen3TTSModel.from_pretrained(repo, device_map=device, dtype=torch.bfloat16)
+        except TypeError:
+            MODEL = Qwen3TTSModel.from_pretrained(repo, device_map=device)
     MODEL_ID = model_id
     log(f"{model_id} ready")
 
@@ -113,9 +123,10 @@ def do_tts(msg: dict) -> dict:
     language = norm_language(msg.get("language"))
     out_path = msg["out"]
 
-    seed = int(params.get("seed") or 0)
-    if seed > 0:
-        torch.manual_seed(seed)
+    seed = int(params.get("seed") or random.randint(1, 999999))
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
 
     # sampling knobs are forwarded as **kwargs; retry without them if this
     # qwen-tts build doesn't take them
@@ -124,6 +135,10 @@ def do_tts(msg: dict) -> dict:
         sample_kw["temperature"] = float(params["temperature"])
     if params.get("top_p") not in (None, "", 0):
         sample_kw["top_p"] = float(params["top_p"])
+    if params.get("top_k") not in (None, "", 0):
+        sample_kw["top_k"] = int(params["top_k"])
+    if params.get("repetition_penalty") not in (None, "", 0):
+        sample_kw["repetition_penalty"] = float(params["repetition_penalty"])
 
     def gen(fn, **kw):
         try:
@@ -143,6 +158,15 @@ def do_tts(msg: dict) -> dict:
             raise RuntimeError("this qwen-tts version has no generate_voice_design(); "
                                "use a Base model or update qwen-tts")
         wavs, sr = gen(fn, text=text, language=language, instruct=desc)
+    elif MODEL_ID.startswith("customvoice_"):
+        fn = getattr(MODEL, "generate_custom_voice", None)
+        if fn is None:
+            raise RuntimeError("this qwen-tts version has no generate_custom_voice(); update qwen-tts")
+        speaker = (params.get("speaker") or "Ryan").strip()
+        custom_kw = {"text": text, "language": language, "speaker": speaker}
+        if MODEL_ID == "customvoice_1_7b":
+            custom_kw["instruct"] = (params.get("style_instruction") or "").strip()
+        wavs, sr = gen(fn, **custom_kw)
     else:
         if not refs:
             raise RuntimeError("qwen3tts cloning needs a reference clip — add one to the voice")
@@ -151,19 +175,23 @@ def do_tts(msg: dict) -> dict:
             log("qwen3tts does not support mixing; using highest-weight ref only")
         ref = refs[0]
         ref_path = postfx.preprocess_ref(ref["path"], log)  # trim + normalize (cached)
-        wavs, sr = gen(
-            MODEL.generate_voice_clone,
-            text=text,
-            language=language,
-            ref_audio=ref_path,
-            ref_text=ref_transcript(ref_path, ref.get("transcript")),
-        )
+        x_vector_only = bool(params.get("x_vector_only"))
+        clone_kw = {
+            "text": text,
+            "language": language,
+            "ref_audio": ref_path,
+            "x_vector_only_mode": x_vector_only,
+        }
+        if not x_vector_only:
+            clone_kw["ref_text"] = ref_transcript(ref["path"], ref.get("transcript"))
+        wavs, sr = gen(MODEL.generate_voice_clone, **clone_kw)
 
     if msg.get("raw_out"):  # pre-FX take, cached so /api/postfx can re-shape live
         sf.write(msg["raw_out"], wavs[0], sr)
     wav = postfx.apply(wavs[0], sr, params, log)
     sf.write(out_path, wav, sr)
-    return {"out": out_path, "seconds": round(len(wav) / sr, 2), "model": MODEL_ID}
+    return {"out": out_path, "seconds": round(len(wav) / sr, 2),
+            "model": MODEL_ID, "seed": seed}
 
 
 def main():
