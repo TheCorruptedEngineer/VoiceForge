@@ -313,6 +313,10 @@ class EngineManager:
             return
         state = {"status": "running", "log": deque(maxlen=2000)}
         self.installs[engine_id] = state
+        # Swapping packages in an env the worker is running out of locks every
+        # loaded torch DLL/.pyd on Windows — the install half-succeeds and
+        # leaves an empty torch/ that only blows up on the next generate.
+        self.unload(engine_id)
         threading.Thread(target=self._install_thread, args=(spec, state), daemon=True).start()
 
     def _install_thread(self, spec: EngineSpec, state: dict):
@@ -349,6 +353,16 @@ class EngineManager:
                 rc = run(args)
                 if rc != 0:
                     state["status"] = f"failed (exit {rc})"
+                    return
+            # A torch env can pass pip yet be broken on disk (interrupted copy,
+            # AV quarantine, killed install) — that otherwise surfaces only as
+            # a cryptic ImportError on the first generate. Fail here, in the
+            # install log, where the fix can be stated.
+            if "torch" in (spec.dir / "requirements.txt").read_text(encoding="utf-8"):
+                rc = run([str(_env_python(spec.id)), "-c", "import torch"])
+                if rc != 0:
+                    state["status"] = "failed (import torch — env is corrupt)"
+                    log.append(f"delete envs\\{spec.id} and Install again")
                     return
             # optional per-engine post-install (weight/checkpoint download, repo
             # checkout, patches) — runs inside the engine's own venv so it has
