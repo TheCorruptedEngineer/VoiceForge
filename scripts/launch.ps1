@@ -3,6 +3,14 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 
+# The uv cache lives on the system drive but the project may not (e.g. cache
+# on C:, repo on D:) — hardlinks can't cross filesystems and uv warns + falls
+# back to a full copy. Opt into copy mode there so first-run install is quiet.
+$UvCache = if ($env:UV_CACHE_DIR) { $env:UV_CACHE_DIR } else { Join-Path $env:LOCALAPPDATA "uv" }
+if ((Split-Path $UvCache -Qualifier) -ne (Split-Path $Root -Qualifier)) {
+    $env:UV_LINK_MODE = "copy"
+}
+
 if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
     Write-Host "[VoiceForge] uv not found - installing it now..." -ForegroundColor Cyan
     if (Get-Command winget -ErrorAction SilentlyContinue) {
