@@ -465,5 +465,6 @@ def api_delete_history(filename: str):
 
 OUTPUTS.mkdir(exist_ok=True)
 app.mount("/outputs", StaticFiles(directory=str(OUTPUTS)), name="outputs")
-app.mount("/voicefiles", StaticFiles(directory=str(ROOT / "voices")), name="voicefiles")
+V.VOICES_DIR.mkdir(exist_ok=True)
+app.mount("/voicefiles", StaticFiles(directory=str(V.VOICES_DIR)), name="voicefiles")
 app.mount("/", StaticFiles(directory=str(ROOT / "ui"), html=True), name="ui")
